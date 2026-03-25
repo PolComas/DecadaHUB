@@ -111,7 +111,7 @@ export default function AppLayout() {
       />
 
       <main className="content-area">
-        <div className="content-shell">
+        <div className={`content-shell ${selectedClientId ? "content-shell-wide" : ""}`}>
           <header className="topbar">
             <div className="topbar-left">
               <button
@@ -120,20 +120,17 @@ export default function AppLayout() {
                 onClick={() => setIsSidebarOpen(true)}
                 type="button"
               >
-                Clients
+                Menu
               </button>
 
-              <div>
-                <div className="topbar-meta">
-                  <span>
-                    {lastUpdated
-                      ? `Actualitzat ${formatDateTime(lastUpdated.toISOString())}`
-                      : "Sense càrrega"}
-                  </span>
-                  <Link className="topbar-link" to="/">
-                    Dashboard
-                  </Link>
-                </div>
+              <div className="topbar-meta">
+                <Link className="topbar-link" to="/">DecadaHUB</Link>
+                <span className="breadcrumb-separator">/</span>
+                <span>
+                  {lastUpdated
+                    ? `Actualitzat ${formatDateTime(lastUpdated.toISOString())}`
+                    : "Carregant..."}
+                </span>
               </div>
             </div>
 

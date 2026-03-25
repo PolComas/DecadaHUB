@@ -167,3 +167,16 @@ export interface ClientDetail {
   transcripts: Transcript[];
   timeline: TimelineEvent[];
 }
+
+export interface DismissedClient {
+  id: string;
+  name: string;
+  primary_domain: string | null;
+  updated_at: string;
+}
+
+export interface MergeCandidate {
+  id: string;
+  name: string;
+  primary_domain: string | null;
+}

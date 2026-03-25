@@ -3,6 +3,7 @@ import AppLayout from "./components/AppLayout";
 import { AuthProvider, useAuth } from "./lib/auth";
 import DashboardPage from "./pages/DashboardPage";
 import ClientPage from "./pages/ClientPage";
+import DismissedPage from "./pages/DismissedPage";
 import LoginPage from "./pages/LoginPage";
 import "./styles.css";
 
@@ -21,6 +22,7 @@ function AppRouter() {
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="/clients/:clientId" element={<ClientPage />} />
+          <Route path="/dismissed" element={<DismissedPage />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Route>
       ) : (

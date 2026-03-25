@@ -7,10 +7,12 @@ import type {
   ClientRecord,
   DashboardOverview,
   DashboardSummary,
+  DismissedClient,
   EmailMessage,
   EmailThread,
   Mailbox,
   Meeting,
+  MergeCandidate,
   TeamMember,
   TimelineEvent,
   Transcript,
@@ -97,20 +99,26 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
   const ownerById = new Map(teamMembers.map((member) => [member.id, member.full_name]));
   const clientMap = new Map(clients.map((client) => [client.id, client]));
 
-  const mergedClients: ClientOverview[] = clientKpis.map((kpi) => {
-    const client = clientMap.get(kpi.client_id);
+  const mergedClients: ClientOverview[] = clientKpis
+    .filter((kpi) => {
+      // Only show clients that exist in the active clients list
+      // (v_client_kpis_30d may include inactive clients)
+      return clientMap.has(kpi.client_id);
+    })
+    .map((kpi) => {
+      const client = clientMap.get(kpi.client_id)!;
 
-    return {
-      ...kpi,
-      id: kpi.client_id,
-      owner_name: client?.owner_team_member_id
-        ? ownerById.get(client.owner_team_member_id) ?? null
-        : null,
-      notes: client?.notes ?? null,
-      slug: client?.slug ?? null,
-      primary_domain: client?.primary_domain ?? null,
-    };
-  });
+      return {
+        ...kpi,
+        id: kpi.client_id,
+        owner_name: client.owner_team_member_id
+          ? ownerById.get(client.owner_team_member_id) ?? null
+          : null,
+        notes: client.notes ?? null,
+        slug: client.slug ?? null,
+        primary_domain: client.primary_domain ?? null,
+      };
+    });
 
   return {
     clients: mergedClients,
@@ -146,6 +154,99 @@ export async function dismissClient(clientId: string, primaryDomain: string | nu
 
     if (excludeError) throw excludeError;
   }
+}
+
+export async function fetchDismissedClients(): Promise<DismissedClient[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, primary_domain, updated_at")
+    .eq("status", "inactive")
+    .order("updated_at", { ascending: false })
+    .returns<DismissedClient[]>();
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function restoreClient(clientId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  // 1. Restore client status
+  const { error: updateError } = await supabase
+    .from("clients")
+    .update({ status: "active" })
+    .eq("id", clientId);
+
+  if (updateError) throw updateError;
+
+  // 2. Remove from excluded_senders if present
+  const { data: client } = await supabase
+    .from("clients")
+    .select("primary_domain")
+    .eq("id", clientId)
+    .single();
+
+  if (client?.primary_domain) {
+    await supabase
+      .from("excluded_senders")
+      .delete()
+      .eq("value", client.primary_domain);
+  }
+}
+
+export async function fetchMergeCandidates(excludeId: string): Promise<MergeCandidate[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, primary_domain")
+    .neq("status", "inactive")
+    .neq("id", excludeId)
+    .order("name", { ascending: true })
+    .returns<MergeCandidate[]>();
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function mergeClients(sourceId: string, targetId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  // Move all related data from source to target
+  const tables = [
+    { table: "email_messages", column: "client_id" },
+    { table: "email_threads", column: "client_id" },
+    { table: "meetings", column: "client_id" },
+    { table: "transcripts", column: "client_id" },
+    { table: "ai_insights", column: "client_id" },
+    { table: "action_items", column: "client_id" },
+  ];
+
+  for (const { table, column } of tables) {
+    const { error } = await supabase
+      .from(table)
+      .update({ [column]: targetId })
+      .eq(column, sourceId);
+    if (error) throw error;
+  }
+
+  // Move identifiers
+  const { error: idError } = await supabase
+    .from("client_identifiers")
+    .update({ client_id: targetId })
+    .eq("client_id", sourceId);
+  if (idError) throw idError;
+
+  // Mark source as inactive with merge metadata
+  const { error: mergeError } = await supabase
+    .from("clients")
+    .update({
+      status: "inactive" as const,
+      notes: `Fusionat amb client target. ID original: ${sourceId}`,
+      metadata: { merged_into: targetId, merged_at: new Date().toISOString() },
+    })
+    .eq("id", sourceId);
+  if (mergeError) throw mergeError;
 }
 
 export async function fetchClientDetail(clientId: string): Promise<ClientDetail> {

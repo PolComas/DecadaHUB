@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { dismissClient, fetchClientDetail } from "../lib/api";
+import { dismissClient, fetchClientDetail, fetchMergeCandidates, mergeClients } from "../lib/api";
 import { formatDateTime, formatHours, statusLabel } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
 import {
@@ -14,9 +14,11 @@ import {
   SkeletonTimeline,
   TimelineRow,
   durationMinutes,
+  initials,
+  avatarTone,
 } from "../components/ui";
 import { useEffect, useMemo, useState } from "react";
-import type { ClientDetail } from "../types";
+import type { ClientDetail, MergeCandidate } from "../types";
 
 type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "meetings" | "transcripts";
 
@@ -54,6 +56,11 @@ export default function ClientPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
   const [isDismissing, setIsDismissing] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
+  const [mergeSearch, setMergeSearch] = useState("");
+  const [isMerging, setIsMerging] = useState(false);
+  const [isMergeLoading, setIsMergeLoading] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
@@ -107,6 +114,44 @@ export default function ClientPage() {
       setIsDismissing(false);
     }
   }
+
+  async function openMergeDialog() {
+    if (!clientId) return;
+    setShowMergeDialog(true);
+    setMergeSearch("");
+    setIsMergeLoading(true);
+    try {
+      const candidates = await fetchMergeCandidates(clientId);
+      setMergeCandidates(candidates);
+    } catch {
+      setMergeCandidates([]);
+    } finally {
+      setIsMergeLoading(false);
+    }
+  }
+
+  async function handleMerge(targetId: string, targetName: string) {
+    if (!clientId || !client) return;
+    if (!window.confirm(`Fusionar "${client.client_name}" dins de "${targetName}"? Tots els correus, reunions i dades es mouran al client destí.`)) return;
+
+    setIsMerging(true);
+    try {
+      await mergeClients(clientId, targetId);
+      await refreshDashboard();
+      navigate(`/clients/${targetId}`, { replace: true });
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Error fusionant clients.");
+    } finally {
+      setIsMerging(false);
+      setShowMergeDialog(false);
+    }
+  }
+
+  const filteredMergeCandidates = mergeCandidates.filter((c) => {
+    if (!mergeSearch.trim()) return true;
+    const q = mergeSearch.toLowerCase();
+    return c.name.toLowerCase().includes(q) || (c.primary_domain ?? "").toLowerCase().includes(q);
+  });
 
   const attentionCallout = useMemo(() => {
     if (!client) return null;
@@ -190,14 +235,23 @@ export default function ClientPage() {
             {client ? `${client.meetings_30d} reunions / 30d` : "—"}
           </div>
           {client ? (
-            <button
-              className="ghost-button danger"
-              disabled={isDismissing}
-              onClick={() => void handleDismiss()}
-              type="button"
-            >
-              {isDismissing ? "Descartant..." : "Descartar client"}
-            </button>
+            <div className="detail-actions">
+              <button
+                className="ghost-button"
+                onClick={() => void openMergeDialog()}
+                type="button"
+              >
+                Fusionar
+              </button>
+              <button
+                className="ghost-button danger"
+                disabled={isDismissing}
+                onClick={() => void handleDismiss()}
+                type="button"
+              >
+                {isDismissing ? "Descartant..." : "Descartar"}
+              </button>
+            </div>
           ) : null}
         </div>
       </section>
@@ -477,6 +531,60 @@ export default function ClientPage() {
           </>
         )}
       </section>
+
+      {/* Merge dialog */}
+      {showMergeDialog && (
+        <div className="dialog-backdrop" onClick={() => setShowMergeDialog(false)}>
+          <div className="dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3>Fusionar client</h3>
+              <button
+                className="dialog-close"
+                onClick={() => setShowMergeDialog(false)}
+                type="button"
+              >
+                &times;
+              </button>
+            </div>
+            <p className="dialog-description">
+              Selecciona el client destí. Tots els correus, reunions, insights i accions de
+              <strong> {client?.client_name}</strong> es mouran al client seleccionat.
+            </p>
+            <input
+              className="dialog-search"
+              placeholder="Cercar client destí..."
+              value={mergeSearch}
+              onChange={(e) => setMergeSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="dialog-list">
+              {isMergeLoading ? (
+                <div className="dialog-loading">Carregant clients...</div>
+              ) : filteredMergeCandidates.length === 0 ? (
+                <div className="dialog-empty">Cap client trobat.</div>
+              ) : (
+                filteredMergeCandidates.map((candidate) => (
+                  <button
+                    className="dialog-item"
+                    disabled={isMerging}
+                    key={candidate.id}
+                    onClick={() => void handleMerge(candidate.id, candidate.name)}
+                    type="button"
+                  >
+                    <div className={`item-avatar sm ${avatarTone(candidate.name)}`}>
+                      {initials(candidate.name)}
+                    </div>
+                    <div className="dialog-item-copy">
+                      <strong>{candidate.name}</strong>
+                      <span>{candidate.primary_domain ?? ""}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

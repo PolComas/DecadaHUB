@@ -22,20 +22,12 @@ export default function DashboardPage() {
 
   return (
     <>
-      <section className="hero-panel">
-        <div className="hero-content">
-          <div className="hero-copy">
-            <p className="eyebrow" style={{ color: "rgba(255,255,255,0.7)" }}>
-              Portfolio Pulse
-            </p>
-            <h2 className="hero-title">
-              Relació, resposta i risc per prioritzar millor el dia.
-            </h2>
-            <p className="hero-text">
-              Vista de cartera amb mètriques clau. El detall de cada client inclou
-              timeline, correus, senyals qualitatius i seguiment pendent.
-            </p>
-          </div>
+      <section className="dashboard-header">
+        <div className="dashboard-header-copy">
+          <h2>Portfolio Pulse</h2>
+          <p>
+            Relació, resposta i risc per prioritzar millor el dia.
+          </p>
         </div>
       </section>
 

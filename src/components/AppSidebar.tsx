@@ -38,8 +38,8 @@ export default function AppSidebar({
           <NavLink className="brand-block brand-link" onClick={onClose} to="/">
             <div className="brand-mark">D</div>
             <div>
-              <p className="eyebrow" style={{ marginBottom: 2 }}>Client Hub</p>
               <h1>DecadaHUB</h1>
+              <p style={{ fontSize: 11, color: "var(--sidebar-text)", marginTop: 1 }}>Client Hub</p>
             </div>
           </NavLink>
         </div>
@@ -110,6 +110,7 @@ export default function AppSidebar({
                 className={`client-row ${selectedClientId === client.id ? "selected" : ""}`}
                 key={client.id}
                 onClick={onClose}
+                title={client.client_name}
                 to={`/clients/${client.id}`}
               >
                 <div className="client-row-main">
@@ -130,6 +131,12 @@ export default function AppSidebar({
                 </div>
               </NavLink>
             ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <NavLink className="sidebar-footer-link" onClick={onClose} to="/dismissed">
+            Clients descartats
+          </NavLink>
         </div>
       </aside>
     </>
