@@ -1,0 +1,606 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7ad296d2-b038-4296-887b-827f8ac69d27",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "mailbox_email",
+              "value": "pol@blumb.ai",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "mailbox_label",
+              "value": "Pol Blumb",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "from_date",
+              "value": "2025/09/23",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "max_pages",
+              "value": 50,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "85552bab-c25d-4ec4-98f1-eedb86134b77",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1856,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mailboxes (email, label, provider, is_active)\nVALUES ('{{ $json.mailbox_email }}', '{{ $json.mailbox_label }}', 'gmail', true)\nON CONFLICT (email) DO UPDATE\n  SET label = EXCLUDED.label,\n      is_active = true\nRETURNING id, email;",
+        "options": {}
+      },
+      "id": "8e8f82a3-fa63-4bde-9c24-6ac4f9ff3324",
+      "name": "Upsert mailbox",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1632,
+        96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": "={{ $('Config').item.json.max_pages * 100 }}",
+        "filters": {
+          "q": "=after:{{ $('Config').item.json.from_date }} -in:chats"
+        }
+      },
+      "id": "5798cf6d-5c3d-4876-b2a7-017ba61873ea",
+      "name": "Gmail - List messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1424,
+        96
+      ],
+      "webhookId": "7bbffdf8-fb3b-4162-9c3f-4a7dd996666d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KerPNm7vv87qdDwU",
+          "name": "Gmail Pol"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "61f8e1b1-d574-4964-995d-cec4d86d85ec",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1200,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}"
+      },
+      "id": "f7a32cec-46a6-4e09-9770-4cbb8a23dd3d",
+      "name": "Gmail - Get message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -976,
+        112
+      ],
+      "webhookId": "fdc80185-9042-4b6c-b50b-02bccf3b29b1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KerPNm7vv87qdDwU",
+          "name": "Gmail Pol"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Helpers\nconst mailboxEmail = $('Config').first().json.mailbox_email.toLowerCase();\nconst mailboxId    = $('Upsert mailbox').first().json.id;\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n\n  // --- Headers (n8n Gmail node els posa a primer nivell) ---\n  const rawFrom    = msg.From    ?? '';\n  const rawTo      = msg.To      ?? '';\n  const rawCc      = msg.Cc      ?? msg.CC ?? '';\n  const rawSubject = msg.Subject ?? '';\n\n  // --- Participants ---\n  const parseAddresses = (raw, role) => {\n    if (!raw) return [];\n    return raw.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(addr => {\n      const m = addr.trim().match(/^(?:\"?([^\"<]+)\"?\\s*)?<?([^>]+)>?$/);\n      return {\n        email: (m?.[2] ?? addr).trim().toLowerCase(),\n        name:  (m?.[1] ?? '').trim(),\n        role\n      };\n    });\n  };\n\n  const participants = [\n    ...parseAddresses(rawFrom, 'from'),\n    ...parseAddresses(rawTo,   'to'),\n    ...parseAddresses(rawCc,   'cc')\n  ];\n\n  const fromEntry  = participants.find(p => p.role === 'from');\n  const fromEmail  = fromEntry?.email ?? '';\n  const fromDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : '';\n\n  // --- Direction ---\n  const allRecipients = participants\n    .filter(p => p.role === 'to' || p.role === 'cc')\n    .map(p => p.email);\n\n  let direction;\n  if (fromEmail.includes(mailboxEmail)) {\n    direction = 'team_to_client';\n  } else if (allRecipients.some(e => e.includes(mailboxEmail))) {\n    direction = 'client_to_team';\n  } else {\n    direction = 'internal';\n  }\n\n  // --- Clean subject ---\n  const cleanSubject = rawSubject\n    .replace(/^(Re|RE|Fwd|FWD|Fw|FW):\\s*/g, '')\n    .trim();\n\n  // --- Body text ---\n  // n8n Gmail node no retorna el body dins de payload.parts,\n  // fem servir snippet com a fallback (és el resum que dona Gmail)\n  const bodyText = msg.snippet ?? '';\n\n  // --- Sent date ---\n  const sentAt = msg.internalDate\n    ? new Date(parseInt(msg.internalDate)).toISOString()\n    : new Date().toISOString();\n\n  results.push({\n    json: {\n      // IDs from Gmail\n      provider_message_id: msg.id,\n      provider_thread_id:  msg.threadId,\n      history_id:          msg.historyId,\n      // Headers\n      internet_message_id: '',\n      references:          '',\n      subject:             cleanSubject,\n      raw_subject:         rawSubject,\n      snippet:             msg.snippet ?? '',\n      body_text:           bodyText,\n      sent_at:             sentAt,\n      direction,\n      participants,\n      from_email:          fromEmail,\n      from_domain:         fromDomain,\n      // Context\n      mailbox_id:          mailboxId,\n      mailbox_email:       mailboxEmail,\n      raw_payload:         msg\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "4d5d360a-ff3a-4d76-9f7a-a85101e19c8b",
+      "name": "Normalitza email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM resolve_or_create_client(\n  '{{ $json.raw_payload.From.match(/<([^>]+)>/)?.[1] }}',\n  '{{ ($json.raw_payload.From.match(/<([^>]+)>/)?.[1] || $json.raw_payload.From).split('@')[1] || '' }}'\n)",
+        "options": {}
+      },
+      "id": "1f63c06d-1914-47f7-a838-0a82fd60c6fc",
+      "name": "Resolve client",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -544,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge resolve-client result back into the normalized message\nconst normalized = $('Normalitza email').item.json;\nconst clientRow  = $input.item.json;\n\nconst clientId = clientRow?.client_id ?? null;\n\nreturn [{\n  json: {\n    ...normalized,\n    client_id: clientId,\n    needs_manual_review: clientId === null\n  }\n}];\n"
+      },
+      "id": "9d0ed281-fcb6-4aea-b9ae-b2f6d56efc84",
+      "name": "Merge client_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Only insert contact for manual review if client not found\nINSERT INTO contacts (email, full_name, company_name, contact_type)\nSELECT\n  '{{ $json.raw_payload.From.match(/<([^>]+)>/)?.[1] }}'        AS email,\n  '{{ $json.raw_payload.From }}'                              AS full_name,\n  '{{ ($json.raw_payload.From.match(/<([^>]+)>/)?.[1] || $json.raw_payload.From).split('@')[1] || '' }}'       AS company_name,\n  'external'                      AS contact_type\nWHERE '{{ $json.needs_manual_review }}' = 'true'\n  AND NOT EXISTS (\n    SELECT 1 FROM contacts WHERE email = '{{ $json.raw_payload.From.match(/<([^>]+)>/)?.[1] }}'\n  )\nRETURNING id;",
+        "options": {}
+      },
+      "id": "c2142af6-3ecf-4836-a98a-f7781e3a53bc",
+      "name": "Create contact (manual review)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -128,
+        -96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_threads (\n  mailbox_id,\n  provider_thread_id,\n  client_id,\n  subject,\n  first_message_at,\n  last_message_at,\n  message_count,\n  last_direction,\n  status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.raw_payload.Subject.replace(/'/g, \"''\") }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.sent_at }}',\n  1,\n  '{{ $json.direction }}',\n  'open'\n)\nON CONFLICT (mailbox_id, provider_thread_id) DO UPDATE\n  SET last_message_at = GREATEST(email_threads.last_message_at, EXCLUDED.last_message_at),\n      message_count   = email_threads.message_count + 1,\n      last_direction  = EXCLUDED.last_direction,\n      status          = CASE\n        WHEN email_threads.status = 'closed' THEN 'open'\n        ELSE email_threads.status\n      END,\n      client_id       = COALESCE(email_threads.client_id, EXCLUDED.client_id)\nRETURNING id AS thread_id;",
+        "options": {}
+      },
+      "id": "1951dd39-4e80-4ac6-a124-8fb0f2780564",
+      "name": "Upsert thread",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -128,
+        112
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Attach thread_id to the message data\nconst msg      = $('Merge client_id').item.json;\nconst threadRow = $input.item.json;\n\nreturn [{\n  json: {\n    ...msg,\n    thread_id: threadRow.thread_id\n  }\n}];\n"
+      },
+      "id": "2ef0f25f-8b35-4615-a057-6322debb08fb",
+      "name": "Attach thread_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_messages (\n  mailbox_id,\n  thread_id,\n  client_id,\n  provider_message_id,\n  internet_message_id,\n  subject,\n  snippet,\n  body_text,\n  sent_at,\n  direction,\n  raw_payload\n) VALUES (\n  '{{ ($json.mailbox_id || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.thread_id || '').replace(/'/g, \"''\") }}',\n  {{ $json.client_id ? \"'\" + $json.client_id.replace(/'/g, \"''\") + \"'\" : 'NULL' }},\n  '{{ ($json.provider_message_id || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.internet_message_id || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.subject || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.snippet || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.body_text || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.sent_at || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.direction || '').replace(/'/g, \"''\") }}',\n  '{{ JSON.stringify($json.raw_payload || {}).replace(/'/g, \"''\") }}'::jsonb\n)\nON CONFLICT (mailbox_id, provider_message_id)\nDO UPDATE SET\n  thread_id           = EXCLUDED.thread_id,\n  client_id           = COALESCE(email_messages.client_id, EXCLUDED.client_id),\n  internet_message_id = EXCLUDED.internet_message_id,\n  subject             = EXCLUDED.subject,\n  snippet             = EXCLUDED.snippet,\n  body_text           = EXCLUDED.body_text,\n  direction           = EXCLUDED.direction,\n  raw_payload         = EXCLUDED.raw_payload\nRETURNING id AS message_id;",
+        "options": {}
+      },
+      "id": "199545c1-bc83-42a0-b734-91373e54ad1e",
+      "name": "Upsert message",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        528,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build one row per participant, attached to the new message_id\nconst msg       = $('Attach thread_id').item.json;\nconst messageRow = $input.item.json;\n\nreturn msg.participants.map(p => ({\n  json: {\n    message_id:  messageRow.message_id,\n    thread_id:   msg.thread_id,\n    email:       p.email,\n    name:        p.name,\n    role:        p.role\n  }\n}));\n"
+      },
+      "id": "73f5878e-db95-468e-b56b-90559ac593bf",
+      "name": "Expand participants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_message_participants (message_id, email, full_name, participant_role)\nVALUES (\n  '{{ $json.message_id }}',\n  '{{ $json.email }}',\n  '{{ $json.name }}',\n  '{{ $json.role }}'\n)\nON CONFLICT (message_id, participant_role, email) DO NOTHING;",
+        "options": {}
+      },
+      "id": "698d78f0-c63a-4b73-abc5-ea6c578e5981",
+      "name": "Upsert participants",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE email_threads SET\n  message_count    = (SELECT count(*) FROM email_messages WHERE thread_id = '{{ $('Expand participants').first().json.thread_id }}'),\n  first_message_at = (SELECT min(sent_at) FROM email_messages WHERE thread_id = '{{ $('Expand participants').first().json.thread_id }}'),\n  last_message_at  = (SELECT max(sent_at) FROM email_messages WHERE thread_id = '{{ $('Expand participants').first().json.thread_id }}'),\n  last_direction   = (\n    SELECT direction FROM email_messages\n    WHERE thread_id = '{{ $('Expand participants').first().json.thread_id }}'\n    ORDER BY sent_at DESC\n    LIMIT 1\n  )\nWHERE id = '{{ $('Expand participants').first().json.thread_id }}';",
+        "options": {}
+      },
+      "id": "a8a32654-1ad6-42ef-afc8-53b0de44491f",
+      "name": "Update thread aggregates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1184,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect highest historyId across the entire batch\nconst allItems = $input.all();\nconst historyIds = allItems\n  .map(i => parseInt($('Normalitza email').item?.json?.history_id ?? '0'))\n  .filter(n => !isNaN(n));\n\nconst highest = historyIds.length > 0 ? Math.max(...historyIds).toString() : '0';\nconst mailboxEmail = $('Config').first().json.mailbox_email;\n\nreturn [{ json: { highest_history_id: highest, mailbox_email: mailboxEmail } }];\n"
+      },
+      "id": "73429a44-92c3-479e-b1c1-27cd13a3d5c3",
+      "name": "Collect highest historyId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_cursors (integration_key, cursor_value)\nVALUES (\n  'gmail_history::' || '{{ $json.mailbox_email }}',\n  '{{ $json.highest_history_id }}'\n)\nON CONFLICT (integration_key) DO UPDATE\n  SET cursor_value = EXCLUDED.cursor_value,\n      updated_at   = now();",
+        "options": {}
+      },
+      "id": "ca75276b-f1a9-4d18-bda0-bb91f8d9df38",
+      "name": "Save sync cursor",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1600,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7586a53e-9653-4035-9995-eef2865650da",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        80,
+        128
+      ],
+      "id": "34570962-10a6-4e9a-9de5-82ca0cdf242d",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Upsert mailbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert mailbox": {
+      "main": [
+        [
+          {
+            "node": "Gmail - List messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - List messages": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Gmail - Get message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Get message": {
+      "main": [
+        [
+          {
+            "node": "Normalitza email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalitza email": {
+      "main": [
+        [
+          {
+            "node": "Resolve client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve client": {
+      "main": [
+        [
+          {
+            "node": "Merge client_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge client_id": {
+      "main": [
+        [
+          {
+            "node": "Upsert thread",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create contact (manual review)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create contact (manual review)": {
+      "main": [
+        []
+      ]
+    },
+    "Upsert thread": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach thread_id": {
+      "main": [
+        [
+          {
+            "node": "Upsert message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert message": {
+      "main": [
+        [
+          {
+            "node": "Expand participants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand participants": {
+      "main": [
+        [
+          {
+            "node": "Upsert participants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert participants": {
+      "main": [
+        [
+          {
+            "node": "Update thread aggregates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update thread aggregates": {
+      "main": [
+        [
+          {
+            "node": "Collect highest historyId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect highest historyId": {
+      "main": [
+        [
+          {
+            "node": "Save sync cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save sync cursor": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Attach thread_id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"
+  }
+}

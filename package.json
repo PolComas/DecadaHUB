@@ -1,0 +1,41 @@
+{
+  "name": "decadahub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Internal client communication hub for Gmail, Calendar and meeting transcripts.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PolComas/DecadaHUB.git"
+  },
+  "keywords": [
+    "supabase",
+    "vite",
+    "react",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PolComas/DecadaHUB/issues"
+  },
+  "homepage": "https://github.com/PolComas/DecadaHUB#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.2"
+  }
+}
