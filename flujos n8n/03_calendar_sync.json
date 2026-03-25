@@ -1,0 +1,307 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "df233a61-8c35-4f0d-a10d-fb3ca8cce6db",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id AS mailbox_id, email AS mailbox_email\nFROM mailboxes\nWHERE is_active = true\nORDER BY email;",
+        "options": {}
+      },
+      "id": "e4d3a338-c4c9-41cb-bf50-2b8571cdb508",
+      "name": "Get active mailboxes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        272,
+        -64
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "faeec29a-3ca0-4848-b6f5-69326ef60062",
+      "name": "Split mailboxes (1 at a time)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        496,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "pol@blumb.ai",
+          "mode": "list",
+          "cachedResultName": "pol@blumb.ai"
+        },
+        "returnAll": true,
+        "options": {
+          "orderBy": "startTime"
+        }
+      },
+      "id": "499cd4c1-12d9-4bb3-a7da-fe4a13207e02",
+      "name": "Google Calendar — Get events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        -48
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "xokIKvO0GUv7nl5s",
+          "name": "Google Calendar Pol"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Attach mailbox context to every event item\nconst mailbox = $('Split mailboxes (1 at a time)').item.json;\nconst mailboxEmail = mailbox.mailbox_email.toLowerCase();\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const ev = item.json;\n  // Skip working location events and events without attendees (personal blocks)\n  if (ev.eventType === 'workingLocation') continue;\n  if (ev.eventType === 'focusTime') continue;\n  if (ev.eventType === 'outOfOffice') continue;\n\n  // Skip all-day events that have no time component (date-only start)\n  if (!ev.start?.dateTime && !ev.start?.date) continue;\n\n  // Determine status from Google's eventStatus field\n  const STATUS_MAP = { confirmed: 'confirmed', tentative: 'tentative', cancelled: 'cancelled' };\n  const status = STATUS_MAP[ev.status] ?? 'confirmed';\n\n  // Extract meeting URL: prefer hangoutLink, then conferenceData entryPoints\n  let meetingUrl = ev.hangoutLink ?? null;\n  if (!meetingUrl && ev.conferenceData?.entryPoints) {\n    const videoEntry = ev.conferenceData.entryPoints.find(e => e.entryPointType === 'video');\n    meetingUrl = videoEntry?.uri ?? null;\n  }\n\n  // Parse start/end — handle all-day (date-only) gracefully\n  const startAt   = ev.start?.dateTime ?? ev.start?.date ?? null;\n  const endAt     = ev.end?.dateTime   ?? ev.end?.date   ?? null;\n  const timezone  = ev.start?.timeZone ?? ev.end?.timeZone ?? 'UTC';\n\n  // Attendees array — exclude the calendar resource itself\n  const attendees = (ev.attendees ?? []).map(a => ({\n    email:          (a.email ?? '').toLowerCase(),\n    name:           a.displayName ?? '',\n    response_status: a.responseStatus ?? 'needsAction'\n  }));\n\n  const attendeeEmails  = attendees.map(a => a.email).filter(Boolean);\n  const attendeeDomains = [...new Set(\n    attendeeEmails\n      .filter(e => e.includes('@'))\n      .map(e => e.split('@')[1])\n  )];\n\n  const ownDomain = mailboxEmail.split('@')[1];\n  const externalEmails = attendeeEmails.filter(e => !e.endsWith('@' + ownDomain));\n  const externalDomains = attendeeDomains.filter(d => d !== ownDomain);\n  results.push({\n    json: {\n      // Identity\n      mailbox_id:    mailbox.mailbox_id,\n      mailbox_email: mailbox.mailbox_email,\n      // Event core\n      provider_event_id: ev.id,\n      title:             ev.summary     ?? '(No title)',\n      description:       ev.description ?? '',\n      start_at:          startAt,\n      end_at:            endAt,\n      timezone,\n      meeting_url:       meetingUrl,\n      status,\n      // Attendees\n      attendees,\n      attendee_emails:  externalEmails,\n      attendee_domains: externalDomains,\n      // Pass through for debugging\n      raw_event: ev\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "e66be632-1e35-40a2-946e-1104ec698288",
+      "name": "Normalitza event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT ci.client_id\nFROM client_identifiers ci\nWHERE (\n  {{ $json.attendee_emails.length > 0\n    ? \"ci.identifier_value = ANY(ARRAY[\" + $json.attendee_emails.map(e => \"'\" + e + \"'\").join(',') + \"]::text[])\"\n    : \"false\"\n  }}\n  OR\n  {{ $json.attendee_domains.length > 0\n    ? \"ci.identifier_value = ANY(ARRAY[\" + $json.attendee_domains.map(d => \"'\" + d + \"'\").join(',') + \"]::text[])\"\n    : \"false\"\n  }}\n)\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "2e8ddb86-945b-446c-b507-60a7728b29d7",
+      "name": "Resolve client",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1184,
+        -48
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allEvents = $('Normalitza event').all();\nconst allClients = $input.all();\n\nreturn allClients.map((clientItem, i) => {\n  const ev = allEvents[i].json;\n  const clientRow = clientItem.json;\n  return {\n    json: {\n      ...ev,\n      client_id: clientRow?.client_id ?? null\n    }\n  };\n});"
+      },
+      "id": "f288bb45-c3e6-4911-8623-efa7e8d6a914",
+      "name": "Merge client_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO meetings (\n  mailbox_id, provider_event_id, calendar_id, client_id,\n  title, description, start_at, end_at, timezone, meeting_url, status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_event_id }}',\n  'primary',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ ($json.title || '').replace(/'/g, \"''\") }}',\n  '{{ ($json.description || '').replace(/'/g, \"''\") }}',\n  {{ $json.start_at ? \"'\" + $json.start_at + \"'\" : 'NULL' }},\n  {{ $json.end_at   ? \"'\" + $json.end_at   + \"'\" : 'NULL' }},\n  '{{ $json.timezone }}',\n  {{ $json.meeting_url ? \"'\" + $json.meeting_url.replace(/'/g, \"''\") + \"'\" : 'NULL' }},\n  '{{ $json.status }}'\n)\nON CONFLICT (mailbox_id, calendar_id, provider_event_id) DO UPDATE\n  SET client_id   = COALESCE(meetings.client_id, EXCLUDED.client_id),\n      title       = EXCLUDED.title,\n      description = EXCLUDED.description,\n      start_at    = EXCLUDED.start_at,\n      end_at      = EXCLUDED.end_at,\n      timezone    = EXCLUDED.timezone,\n      meeting_url = COALESCE(EXCLUDED.meeting_url, meetings.meeting_url),\n      status      = EXCLUDED.status\nRETURNING id AS meeting_id;",
+        "options": {}
+      },
+      "id": "a676e37f-f60f-416c-af34-2d8031127e64",
+      "name": "Upsert meeting",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1632,
+        -48
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allEvents = $('Merge client_id').all();\nconst allMeetings = $input.all();\n\nconst results = [];\nfor (let i = 0; i < allMeetings.length; i++) {\n  const ev = allEvents[i].json;\n  const meetingRow = allMeetings[i].json;\n  if (!ev.attendees?.length) continue;\n  for (const a of ev.attendees) {\n    results.push({\n      json: {\n        meeting_id:      meetingRow.meeting_id,\n        email:           a.email,\n        name:            a.name,\n        response_status: a.response_status\n      }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "dcbf3e71-a48c-4d8e-907d-b1475928b454",
+      "name": "Expand attendees",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO meeting_attendees (meeting_id, email, full_name, response_status)\nVALUES (\n  '{{ $json.meeting_id }}',\n  '{{ $json.email }}',\n  '{{ ($json.name || '').replace(/'/g, \"''\") }}',\n  CASE '{{ $json.response_status }}'\n    WHEN 'needsAction' THEN 'needs_action'::public.attendee_response_status\n    WHEN 'accepted'    THEN 'accepted'::public.attendee_response_status\n    WHEN 'tentative'   THEN 'tentative'::public.attendee_response_status\n    WHEN 'declined'    THEN 'declined'::public.attendee_response_status\n    ELSE 'needs_action'::public.attendee_response_status\n  END\n)\nON CONFLICT (meeting_id, email) DO UPDATE\n  SET full_name       = EXCLUDED.full_name,\n      response_status = EXCLUDED.response_status;\n",
+        "options": {}
+      },
+      "id": "a3197b5e-939e-470a-9954-516671f96dd5",
+      "name": "Upsert attendees",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2064,
+        -48
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get active mailboxes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get active mailboxes": {
+      "main": [
+        [
+          {
+            "node": "Split mailboxes (1 at a time)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split mailboxes (1 at a time)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Google Calendar — Get events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar — Get events": {
+      "main": [
+        [
+          {
+            "node": "Normalitza event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalitza event": {
+      "main": [
+        [
+          {
+            "node": "Resolve client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve client": {
+      "main": [
+        [
+          {
+            "node": "Merge client_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge client_id": {
+      "main": [
+        [
+          {
+            "node": "Upsert meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert meeting": {
+      "main": [
+        [
+          {
+            "node": "Expand attendees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand attendees": {
+      "main": [
+        [
+          {
+            "node": "Upsert attendees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert attendees": {
+      "main": [
+        [
+          {
+            "node": "Split mailboxes (1 at a time)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"
+  }
+}

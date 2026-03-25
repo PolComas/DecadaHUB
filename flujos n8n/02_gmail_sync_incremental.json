@@ -1,0 +1,502 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "0531c742-d710-40db-a89a-35df57856ca8",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1632,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT m.id AS mailbox_id, m.email AS mailbox_email\nFROM mailboxes m\nWHERE m.is_active = true\nORDER BY m.email;",
+        "options": {}
+      },
+      "id": "726008f0-b382-4b39-a3cc-75fb5219c44e",
+      "name": "Get active mailboxes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1408,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5228391b-8098-4a17-a02a-61e7694b2857",
+      "name": "Split mailboxes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(\n  (SELECT cursor_value FROM sync_cursors\n   WHERE integration_key = 'gmail_date::' || '{{ $json.mailbox_email }}'),\n  to_char(now() - interval '2 days', 'YYYY/MM/DD')\n) AS last_sync_date;",
+        "options": {}
+      },
+      "id": "26ff3a43-4a03-43f8-a6cd-05d25913b449",
+      "name": "Read last sync date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -960,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const mailbox = $('Split mailboxes').item.json;\nconst row = $input.item.json;\n\n// Subtract 1 day from last_sync_date for safety overlap\nconst d = new Date(row.last_sync_date.replace(/\\//g, '-'));\nd.setDate(d.getDate() - 1);\nconst afterDate = d.toISOString().slice(0, 10).replace(/-/g, '/');\n\nreturn [{\n  json: {\n    mailbox_id:    mailbox.mailbox_id,\n    mailbox_email: mailbox.mailbox_email,\n    after_date:    afterDate\n  }\n}];"
+      },
+      "id": "2be109cf-4b10-46ae-8fc9-3359a2865903",
+      "name": "Build Gmail query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 500,
+        "filters": {
+          "q": "=after:{{ $json.after_date }} -in:chats"
+        }
+      },
+      "id": "167707f2-faf9-4b32-bf6b-35d4851826b3",
+      "name": "Gmail — List messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        -480
+      ],
+      "webhookId": "54ab907e-6fa4-4e38-a482-cb728feff156",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KerPNm7vv87qdDwU",
+          "name": "Gmail Pol"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const esc = (str) => (str ?? '').replace(/'/g, \"''\");\n\nconst FREEMAIL = new Set([\n  'gmail.com','googlemail.com','outlook.com','hotmail.com','hotmail.es',\n  'live.com','yahoo.com','yahoo.es','icloud.com','me.com','mac.com',\n  'protonmail.com','proton.me','aol.com','zoho.com','mail.com',\n  'gmx.com','gmx.es','yandex.com','tutanota.com','fastmail.com'\n]);\n\nconst ctx = $('Build Gmail query').first().json;\nconst mailboxEmail = ctx.mailbox_email.toLowerCase();\nconst mailboxId    = ctx.mailbox_id;\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n\n  const rawFrom    = msg.From    ?? '';\n  const rawTo      = msg.To      ?? '';\n  const rawCc      = msg.Cc      ?? msg.CC ?? '';\n  const rawSubject = msg.Subject ?? msg.subject ?? '';\n\n  // Robust address parser\n  const parseAddresses = (raw, role) => {\n    if (!raw) return [];\n    return raw.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(addr => {\n      addr = addr.trim();\n      const angleMatch = addr.match(/<([^>]+)>/);\n      if (angleMatch) {\n        const email = angleMatch[1].trim().toLowerCase();\n        const namePart = addr.slice(0, addr.indexOf('<')).replace(/^[\"'\\s]+|[\"'\\s]+$/g, '').trim();\n        return { email, name: esc(namePart), role };\n      }\n      const bareEmail = addr.replace(/^[\"'\\s]+|[\"'\\s]+$/g, '').toLowerCase();\n      return { email: bareEmail, name: '', role };\n    }).filter(p => p.email && p.email.includes('@'));\n  };\n\n  const participants = [\n    ...parseAddresses(rawFrom, 'from'),\n    ...parseAddresses(rawTo,   'to'),\n    ...parseAddresses(rawCc,   'cc')\n  ];\n\n  const fromEntry  = participants.find(p => p.role === 'from');\n  const fromEmail  = fromEntry?.email ?? '';\n  const fromDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : '';\n\n  const allRecipients = participants\n    .filter(p => p.role === 'to' || p.role === 'cc')\n    .map(p => p.email);\n\n  let direction;\n  if (fromEmail === mailboxEmail) {\n    direction = 'team_to_client';\n  } else if (allRecipients.includes(mailboxEmail)) {\n    direction = 'client_to_team';\n  } else {\n    direction = 'internal';\n  }\n\n  // For team_to_client: resolve from RECIPIENT, not sender\n  let resolveEmail, resolveDomain;\n  if (direction === 'team_to_client') {\n    const extRecipient = participants.find(\n      p => (p.role === 'to' || p.role === 'cc') && p.email !== mailboxEmail\n    );\n    resolveEmail  = extRecipient?.email ?? '';\n    resolveDomain = resolveEmail.includes('@') ? resolveEmail.split('@')[1] : '';\n  } else {\n    resolveEmail  = fromEmail;\n    resolveDomain = fromDomain;\n  }\n\n  // Freemail: don't resolve by domain (would merge unrelated people)\n  if (FREEMAIL.has(resolveDomain)) {\n    resolveDomain = '';\n  }\n\n  const cleanSubject = rawSubject\n    .replace(/^(Re|RE|Fwd|FWD|Fw|FW):\\s*/g, '')\n    .trim();\n\n  const bodyText = msg.snippet ?? '';\n\n  const sentAt = msg.internalDate\n    ? new Date(parseInt(msg.internalDate)).toISOString()\n    : new Date().toISOString();\n\n  // Resolve display name (from the person we're resolving against)\n  let resolveDisplayName = '';\n  if (direction === 'team_to_client') {\n    const extRecipient = participants.find(\n      p => (p.role === 'to' || p.role === 'cc') && p.email !== mailboxEmail\n    );\n    resolveDisplayName = extRecipient?.name ?? '';\n  } else {\n    resolveDisplayName = fromEntry?.name ?? '';\n  }\n  results.push({\n    json: {\n      provider_message_id: msg.id,\n      provider_thread_id:  msg.threadId,\n      internet_message_id: '',\n      subject:             esc(cleanSubject),\n      raw_subject:         esc(rawSubject),\n      snippet:             esc(msg.snippet ?? ''),\n      body_text:           esc(bodyText),\n      sent_at:             sentAt,\n      direction,\n      participants,\n      from_email:          fromEmail,\n      from_domain:         fromDomain,\n      resolve_email:       resolveEmail,\n      resolve_domain:      resolveDomain,\n      mailbox_id:          mailboxId,\n      mailbox_email:       mailboxEmail,\n      resolve_display_name: resolveDisplayName,\n      raw_payload:         JSON.stringify(msg).replace(/'/g, \"''\")\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "adb110b4-447a-4da1-addf-58007e14664f",
+      "name": "Normalitza email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM resolve_or_create_client(\n  '{{ $json.resolve_email }}',\n  '{{ $json.resolve_domain }}',\n  '{{ $json.resolve_display_name }}'\n)",
+        "options": {}
+      },
+      "id": "d2481c54-db6a-4053-bcb2-88ad33cc8c16",
+      "name": "Resolve client",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -64,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allNormalized = $('Normalitza email').all();\nconst allClients = $input.all();\n\nreturn allClients.map((clientItem, i) => {\n  const normalized = allNormalized[i].json;\n  const clientRow = clientItem.json;\n  return {\n    json: {\n      ...normalized,\n      client_id: clientRow?.client_id ?? null,\n      needs_manual_review: !clientRow?.client_id\n    }\n  };\n});"
+      },
+      "id": "73776a65-2902-4f53-b11c-d77419f90e2a",
+      "name": "Merge client_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_threads (\n  mailbox_id, provider_thread_id, client_id, subject,\n  first_message_at, last_message_at, message_count, last_direction, status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.subject }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.sent_at }}',\n  1,\n  '{{ $json.direction }}',\n  CASE\n    WHEN '{{ $json.direction }}' = 'client_to_team' THEN 'waiting_team'::public.thread_status\n    WHEN '{{ $json.direction }}' = 'team_to_client' THEN 'waiting_client'::public.thread_status\n    ELSE 'open'::public.thread_status\n  END\n)\nON CONFLICT (mailbox_id, provider_thread_id) DO UPDATE\n  SET last_message_at = GREATEST(email_threads.last_message_at, EXCLUDED.last_message_at),\n      message_count   = email_threads.message_count + 1,\n      last_direction  = EXCLUDED.last_direction,\n      client_id       = COALESCE(email_threads.client_id, EXCLUDED.client_id),\n      status          = CASE\n        WHEN EXCLUDED.last_direction = 'client_to_team' THEN 'waiting_team'::public.thread_status\n        WHEN EXCLUDED.last_direction = 'team_to_client' THEN 'waiting_client'::public.thread_status\n        WHEN email_threads.status    = 'closed'         THEN 'open'::public.thread_status\n        ELSE email_threads.status\n      END\nRETURNING id AS thread_id;",
+        "options": {}
+      },
+      "id": "1025f30f-313e-41fa-8728-c564d0ea2be4",
+      "name": "Upsert thread",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        384,
+        -480
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allMerged = $('Merge client_id').all();\nconst allThreads = $input.all();\n\nreturn allThreads.map((threadItem, i) => {\n  const msg = allMerged[i].json;\n  const threadRow = threadItem.json;\n  return {\n    json: { ...msg, thread_id: threadRow.thread_id }\n  };\n});"
+      },
+      "id": "e2af108a-c3da-4d4a-b28b-482d66a68b84",
+      "name": "Attach thread_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_messages (\n  mailbox_id, thread_id, client_id, provider_message_id, internet_message_id,\n  subject, snippet, body_text, sent_at, direction, raw_payload\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.provider_message_id }}',\n  '{{ $json.internet_message_id }}',\n  '{{ $json.subject }}',\n  '{{ $json.snippet }}',\n  '{{ $json.body_text }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.direction }}',\n  '{{ $json.raw_payload }}'::jsonb\n)\nON CONFLICT (mailbox_id, provider_message_id) DO UPDATE\n  SET thread_id           = EXCLUDED.thread_id,\n      client_id           = COALESCE(email_messages.client_id, EXCLUDED.client_id),\n      snippet             = EXCLUDED.snippet,\n      body_text           = EXCLUDED.body_text,\n      direction           = EXCLUDED.direction,\n      raw_payload         = EXCLUDED.raw_payload\nRETURNING id AS message_id;",
+        "options": {}
+      },
+      "id": "7c8f4683-7d62-4e9a-ba6d-0d8f945f3760",
+      "name": "Upsert message",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        832,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allAttached = $('Attach thread_id').all();\nconst allMessages = $input.all();\n\nconst results = [];\nfor (let i = 0; i < allMessages.length; i++) {\n  const msg = allAttached[i].json;\n  const messageRow = allMessages[i].json;\n  for (const p of msg.participants) {\n    results.push({\n      json: {\n        message_id: messageRow.message_id,\n        thread_id:  msg.thread_id,\n        email:      p.email,\n        name:       p.name,\n        role:       p.role\n      }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "d35eb180-4430-4e08-b68e-d0806cdccf50",
+      "name": "Expand participants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_message_participants (message_id, email, full_name, participant_role)\nVALUES (\n  '{{ $json.message_id }}',\n  '{{ $json.email }}',\n  '{{ ($json.name || '').replace(/'/g, \"''\") }}',\n  '{{ $json.role }}'\n)\nON CONFLICT (message_id, participant_role, email) DO NOTHING;",
+        "options": {}
+      },
+      "id": "ccbdc665-be9e-4519-a07b-d9585d314a19",
+      "name": "Upsert participants",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1280,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get thread_ids from Expand participants (not from $input which comes from Upsert)\nconst allParticipants = $('Expand participants').all();\nconst seen = new Set();\nconst results = [];\nfor (const item of allParticipants) {\n  const tid = item.json.thread_id;\n  if (tid && !seen.has(tid)) {\n    seen.add(tid);\n    results.push({ json: { thread_id: tid } });\n  }\n}\nreturn results;"
+      },
+      "id": "ee61ef2b-561c-4c1d-92f9-0b66ab1ff5e4",
+      "name": "Deduplicate thread_ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE email_threads SET\n  message_count    = (SELECT count(*) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}'),\n  first_message_at = (SELECT min(sent_at) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}'),\n  last_message_at  = (SELECT max(sent_at) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}')\nWHERE id = '{{ $json.thread_id }}';",
+        "options": {}
+      },
+      "id": "9fd569fb-1e01-4e2e-8e1f-fde1a815b7f3",
+      "name": "Update thread aggregates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1728,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_cursors (integration_key, cursor_value)\nVALUES (\n  'gmail_date::' || '{{ $('Build Gmail query').first().json.mailbox_email }}',\n  to_char(now(), 'YYYY/MM/DD')\n)\nON CONFLICT (integration_key) DO UPDATE\n  SET cursor_value = EXCLUDED.cursor_value,\n      updated_at   = now();",
+        "options": {}
+      },
+      "id": "19fc3864-2127-4498-a0a2-da61adab79bf",
+      "name": "Save sync date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1952,
+        -480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get active mailboxes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get active mailboxes": {
+      "main": [
+        [
+          {
+            "node": "Split mailboxes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split mailboxes": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Read last sync date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read last sync date": {
+      "main": [
+        [
+          {
+            "node": "Build Gmail query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gmail query": {
+      "main": [
+        [
+          {
+            "node": "Gmail — List messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — List messages": {
+      "main": [
+        [
+          {
+            "node": "Normalitza email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalitza email": {
+      "main": [
+        [
+          {
+            "node": "Resolve client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve client": {
+      "main": [
+        [
+          {
+            "node": "Merge client_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge client_id": {
+      "main": [
+        [
+          {
+            "node": "Upsert thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert thread": {
+      "main": [
+        [
+          {
+            "node": "Attach thread_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach thread_id": {
+      "main": [
+        [
+          {
+            "node": "Upsert message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert message": {
+      "main": [
+        [
+          {
+            "node": "Expand participants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand participants": {
+      "main": [
+        [
+          {
+            "node": "Upsert participants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert participants": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate thread_ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate thread_ids": {
+      "main": [
+        [
+          {
+            "node": "Update thread aggregates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update thread aggregates": {
+      "main": [
+        [
+          {
+            "node": "Save sync date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save sync date": {
+      "main": [
+        [
+          {
+            "node": "Split mailboxes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"
+  }
+}
