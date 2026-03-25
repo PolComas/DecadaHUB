@@ -1,0 +1,281 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "acf8e9b1-1074-441e-8d6e-f00912618f45",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  client_id,\n  client_name,\n  client_status,\n  emails_sent_30d,\n  emails_received_30d,\n  avg_team_response_hours_30d,\n  negative_signals_30d,\n  positive_signals_30d,\n  stalled_threads_gt_72h,\n  meetings_30d,\n  open_actions,\n  overdue_actions,\n  risk_score_heuristic\nFROM v_client_kpis_30d\nORDER BY risk_score_heuristic DESC;",
+        "options": {}
+      },
+      "id": "5346a01e-8651-4f89-8638-f24aecef4118",
+      "name": "Query KPIs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -416,
+        -80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);\n\nconst RISK_THRESHOLD   = 6;\nconst RESPONSE_HRS_MAX = 48;\nconst NEG_SIGNALS_MAX  = 3;\n\nconst alertWorthy = all.filter(c =>\n  c.risk_score_heuristic        >= RISK_THRESHOLD   ||\n  c.avg_team_response_hours_30d >  RESPONSE_HRS_MAX ||\n  c.negative_signals_30d        >= NEG_SIGNALS_MAX   ||\n  c.overdue_actions             >  0\n);\n\nconst critical = alertWorthy.filter(c => c.risk_score_heuristic >= 8);\nconst warning  = alertWorthy.filter(c => c.risk_score_heuristic >= 6 && c.risk_score_heuristic < 8);\nconst watch    = alertWorthy.filter(c => c.risk_score_heuristic < 6);\n\nif (alertWorthy.length === 0) {\n  return [{ json: { has_alerts: false, alertWorthy: [], critical: [], warning: [], watch: [], total: all.length } }];\n}\n\nreturn [{ json: { has_alerts: true, alertWorthy, critical, warning, watch, total: all.length } }];"
+      },
+      "id": "6a7c0be6-ea0d-43e6-a907-82256f2ebc93",
+      "name": "Filter alert-worthy clients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{ $json.has_alerts }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c48a1a9c-eb19-48d4-b78d-f605bb8320e7",
+      "name": "Hi ha alertes?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        16,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { critical, warning, watch, total, alertWorthy } = $input.item.json;\n\nconst today = new Date().toLocaleDateString('es-ES', {\n  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',\n  timeZone: 'Europe/Madrid'\n});\n\nconst fmt = (c) => {\n  const risk = Number(c.risk_score_heuristic).toFixed(1);\n  const resp = c.avg_team_response_hours_30d > 0\n    ? `${Number(c.avg_team_response_hours_30d).toFixed(0)}h`\n    : '—';\n  const neg  = c.negative_signals_30d;\n  const od   = c.overdue_actions;\n  const stalled = c.stalled_threads_gt_72h;\n\n  const badges = [];\n  if (neg >= 3)                              badges.push('⚠️ señales negativas');\n  if (c.avg_team_response_hours_30d > 48)    badges.push('🐢 respuesta lenta');\n  if (od > 0)                                badges.push(`📋 ${od} acción${od>1?'es':''} vencida${od>1?'s':''}`);\n  if (stalled > 0)                           badges.push(`🔇 ${stalled} hilo${stalled>1?'s':''} estancado${stalled>1?'s':''}`);\n  const badgeStr = badges.length ? `  ${badges.join(' · ')}` : '';\n\n  return `• *${c.client_name}*  Risk: *${risk}* | Respuesta: ${resp} | Neg: ${neg} | Vencidas: ${od}${badgeStr}`;\n};\n\nconst sections = [];\nif (critical.length) sections.push(`🔴 *CRÍTICO* (risk ≥ 8)\\n${critical.map(fmt).join('\\n')}`);\nif (warning.length)  sections.push(`🟡 *ATENCIÓN* (risk 6–7.9)\\n${warning.map(fmt).join('\\n')}`);\nif (watch.length)    sections.push(`🟠 *VIGILAR*\\n${watch.map(fmt).join('\\n')}`);\n\nconst slackText = [\n  `*📊 DecadaHUB — Resumen diario de cartera*`,\n  `${today}  ·  ${alertWorthy.length} clientes necesitan atención de ${total} totales`,\n  '',\n  ...sections,\n  '',\n  `_Generado automáticamente por DecadaHUB · Flujo 06_`\n].join('\\n');\n\nreturn [{ json: { slack_text: slackText, alertCount: alertWorthy.length, total } }];"
+      },
+      "id": "4e4590fe-2643-483d-a7e9-068331e5ade1",
+      "name": "Format message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U09RKRD7N76",
+          "mode": "list",
+          "cachedResultName": "pol"
+        },
+        "text": "={{ $json.slack_text }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "02c8ecb2-b502-47be-839a-f32613795f38",
+      "name": "Slack — Send daily report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        464,
+        -192
+      ],
+      "webhookId": "8fc8c6d4-dc71-43e7-96a3-9ca45198c4a4",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "rlqgl4bMXXzpceLs",
+          "name": "Slack account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO client_kpi_snapshots (\n  client_id,\n  snapshot_date,\n  risk_score_heuristic,\n  avg_team_response_hours_30d,\n  negative_signals_30d,\n  overdue_actions\n)\nSELECT\n  client_id,\n  CURRENT_DATE,\n  risk_score_heuristic,\n  avg_team_response_hours_30d,\n  negative_signals_30d,\n  overdue_actions\nFROM v_client_kpis_30d\nON CONFLICT (client_id, snapshot_date)\nDO UPDATE SET\n  risk_score_heuristic        = EXCLUDED.risk_score_heuristic,\n  avg_team_response_hours_30d = EXCLUDED.avg_team_response_hours_30d,\n  negative_signals_30d        = EXCLUDED.negative_signals_30d,\n  overdue_actions             = EXCLUDED.overdue_actions;",
+        "options": {}
+      },
+      "id": "932eb05a-7cfd-454a-95c7-69286a6c2805",
+      "name": "Snapshot KPIs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        672,
+        -192
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { no_alerts: true } }];\n"
+      },
+      "id": "2d041dd9-2738-4651-848c-c1eded2783af",
+      "name": "No alerts — still snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO client_kpi_snapshots (\n  client_id,\n  snapshot_date,\n  risk_score_heuristic,\n  avg_team_response_hours_30d,\n  negative_signals_30d,\n  overdue_actions\n)\nSELECT\n  client_id,\n  CURRENT_DATE,\n  risk_score_heuristic,\n  avg_team_response_hours_30d,\n  negative_signals_30d,\n  overdue_actions\nFROM v_client_kpis_30d\nON CONFLICT (client_id, snapshot_date)\nDO UPDATE SET\n  risk_score_heuristic        = EXCLUDED.risk_score_heuristic,\n  avg_team_response_hours_30d = EXCLUDED.avg_team_response_hours_30d,\n  negative_signals_30d        = EXCLUDED.negative_signals_30d,\n  overdue_actions             = EXCLUDED.overdue_actions;",
+        "options": {}
+      },
+      "id": "6cbbf319-35cf-4a31-89ff-30edb1fb66fb",
+      "name": "Snapshot KPIs (no alerts)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        432,
+        32
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query KPIs": {
+      "main": [
+        [
+          {
+            "node": "Filter alert-worthy clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter alert-worthy clients": {
+      "main": [
+        [
+          {
+            "node": "Hi ha alertes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hi ha alertes?": {
+      "main": [
+        [
+          {
+            "node": "Format message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No alerts — still snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format message": {
+      "main": [
+        [
+          {
+            "node": "Slack — Send daily report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Send daily report": {
+      "main": [
+        [
+          {
+            "node": "Snapshot KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No alerts — still snapshot": {
+      "main": [
+        [
+          {
+            "node": "Snapshot KPIs (no alerts)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"
+  }
+}

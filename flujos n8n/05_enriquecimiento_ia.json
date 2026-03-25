@@ -1,0 +1,557 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "346f7f93-b4c8-42fb-90d0-258d9aebdff8",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -368,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  em.id          AS entity_id,\n  'email_message' AS entity_type,\n  em.client_id,\n  em.subject,\n  em.body_text,\n  em.direction,\n  em.sent_at\nFROM email_messages em\nWHERE em.client_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = em.id\n      AND ai.entity_type = 'email_message'\n  )\nORDER BY em.sent_at DESC\nLIMIT 20;",
+        "options": {}
+      },
+      "id": "aaa2a05f-cb57-4367-8e05-59d78bda6ac7",
+      "name": "Fetch pending emails",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -144,
+        -128
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  t.id             AS entity_id,\n  'transcript'      AS entity_type,\n  t.client_id,\n  t.file_name       AS subject,\n  t.content_text    AS body_text,\n  'internal'        AS direction,\n  t.transcript_at   AS sent_at\nFROM transcripts t\nWHERE t.client_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = t.id\n      AND ai.entity_type = 'transcript'\n  )\nORDER BY t.transcript_at DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "ba08ca42-53bb-4c58-a65d-18964777a991",
+      "name": "Fetch pending transcripts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -144,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "3f23ad86-955a-4d62-ac93-138493d4aab5",
+      "name": "Merge pending items",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        80,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "98bef956-e795-4589-bcde-df05c3e1e0d5",
+      "name": "Split In Batches (1×1)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        304,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\n\nconst subject = (item.subject ?? '').toLowerCase();\nconst body = item.body_text ?? '';\n\n// Filtrar correus automàtics que no aporten valor analitzable\nconst SKIP_PATTERNS = [\n  /^aceptad[oa]:/i,\n  /^rechazad[oa]:/i,\n  /^accepted:/i,\n  /^declined:/i,\n  /^tentative:/i,\n  /^invitation:/i,\n  /^invitaci[oó]n:/i,\n  /^updated invitation/i,\n  /^canceled event/i,\n  /^evento cancelado/i,\n  /^out of office/i,\n  /^fuera de (la )?oficina/i,\n  /^automatic reply/i,\n  /^respuesta autom[aá]tica/i,\n  /^undelivered mail/i,\n  /^delivery status/i,\n  /^mail delivery failed/i,\n  /^re:.*noreply/i,\n];\n\nconst shouldSkip = SKIP_PATTERNS.some(p => p.test(item.subject ?? ''));\nif (shouldSkip) return [];\n\n// Truncar body\nconst MAX_BODY_CHARS = 12000;\nconst bodyTrunc = body.substring(0, MAX_BODY_CHARS);\nconst wasTruncated = body.length > MAX_BODY_CHARS;\n\nconst sentAt = item.sent_at\n  ? new Date(item.sent_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })\n  : 'desconocida';\n\nconst prompt = `Analiza el siguiente contenido de comunicación empresarial.\nResponde EXCLUSIVAMENTE en JSON válido con esta estructura exacta, sin ningún texto adicional fuera del JSON:\n{\n  \"summary\": \"resumen breve en 1-2 frases del contenido\",\n  \"sentiment_label\": \"positive\" | \"neutral\" | \"negative\" | \"mixed\",\n  \"sentiment_score\": número entre -1.0 y 1.0,\n  \"complaint_flag\": true o false,\n  \"satisfaction_flag\": true o false,\n  \"needs_follow_up\": true o false,\n  \"urgency_score\": número entre 0.0 y 1.0,\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"risks\": [\"riesgo1\", \"riesgo2\"],\n  \"action_items\": [{\"text\": \"descripción de la acción\", \"priority\": \"low|medium|high|critical\"}]\n}\n\nTipo: ${item.entity_type === 'email_message' ? 'Email' : 'Transcripción de reunión'}\nAsunto: ${(item.subject ?? '').substring(0, 200)}\nDirección: ${item.direction}\nFecha: ${sentAt}${wasTruncated ? '\\n[Contenido truncado a los primeros 12.000 caracteres]' : ''}\n\nContenido:\n${bodyTrunc}`;\n\nreturn [{\n  json: {\n    ...item,\n    prompt,\n    body_truncated: wasTruncated\n  }\n}];\n"
+      },
+      "id": "b60ce91e-2301-4997-924f-e4a506329d72",
+      "name": "Build prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -16
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx      = $('Build prompt').item.json;\nconst aiOutput = $input.item.json;\n\n// Extract text — adapt to actual OpenAI response structure\nconst rawText = aiOutput?.output?.[0]?.content?.[0]?.text\n  ?? aiOutput?.message?.content\n  ?? aiOutput?.choices?.[0]?.message?.content\n  ?? '';\n\n// Parse and validate\nlet parsed;\ntry {\n  const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  console.error(`[AI Analysis] JSON parse failed for entity ${ctx.entity_id}: ${err.message}`);\n  return [];\n}\n\nconst VALID_SENTIMENTS = ['positive', 'neutral', 'negative', 'mixed'];\nconst VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];\n\nconst validated = {\n  summary:           typeof parsed.summary          === 'string'  ? parsed.summary.substring(0, 1000) : '',\n  sentiment_label:   VALID_SENTIMENTS.includes(parsed.sentiment_label) ? parsed.sentiment_label : 'neutral',\n  sentiment_score:   typeof parsed.sentiment_score  === 'number'  ? Math.max(-1, Math.min(1, parsed.sentiment_score)) : 0,\n  complaint_flag:    typeof parsed.complaint_flag   === 'boolean' ? parsed.complaint_flag    : false,\n  satisfaction_flag: typeof parsed.satisfaction_flag === 'boolean' ? parsed.satisfaction_flag : false,\n  needs_follow_up:   typeof parsed.needs_follow_up  === 'boolean' ? parsed.needs_follow_up   : false,\n  urgency_score:     typeof parsed.urgency_score    === 'number'  ? Math.max(0, Math.min(1, parsed.urgency_score)) : 0,\n  topics:            Array.isArray(parsed.topics)    ? parsed.topics.filter(t => typeof t === 'string').slice(0, 20) : [],\n  risks:             Array.isArray(parsed.risks)     ? parsed.risks.filter(r => typeof r === 'string').slice(0, 20)  : [],\n  action_items:      Array.isArray(parsed.action_items)\n    ? parsed.action_items\n        .filter(a => a && typeof a.text === 'string')\n        .map(a => ({\n          text:     a.text.substring(0, 500),\n          priority: VALID_PRIORITIES.includes(a.priority) ? a.priority : 'medium'\n        }))\n        .slice(0, 20)\n    : []\n};\n\nreturn [{\n  json: {\n    entity_id:   ctx.entity_id,\n    entity_type: ctx.entity_type,\n    client_id:   ctx.client_id,\n    subject:     ctx.subject,\n    ...validated,\n    raw_output: parsed,\n    is_high_risk: validated.complaint_flag || validated.urgency_score >= 0.8\n  }\n}];"
+      },
+      "id": "2e1dd392-206b-45aa-b84b-acaf096681ac",
+      "name": "Validate + parse response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_insights (\n  entity_type, entity_id, client_id, model_name,\n  summary, sentiment_label, sentiment_score,\n  urgency_score, complaint_flag, satisfaction_flag,\n  needs_follow_up, topics, risks, raw_output, analyzed_at\n)\nVALUES (\n  '{{ $json.entity_type }}'::public.analyzable_entity,\n  '{{ $json.entity_id }}',\n  '{{ $json.client_id }}',\n  'gpt-4',\n  '{{ ($json.summary || '').replace(/'/g, \"''\") }}',\n  '{{ $json.sentiment_label }}'::public.sentiment_label,\n  {{ $json.sentiment_score }},\n  {{ $json.urgency_score }},\n  {{ $json.complaint_flag }},\n  {{ $json.satisfaction_flag }},\n  {{ $json.needs_follow_up }},\n  '{{ JSON.stringify($json.topics) }}'::jsonb,\n  '{{ JSON.stringify($json.risks) }}'::jsonb,\n  '{{ JSON.stringify($json.raw_output).replace(/'/g, \"''\") }}'::jsonb,\n  now()\n)\nRETURNING id AS insight_id;",
+        "options": {}
+      },
+      "id": "010ee43f-7996-4497-aaa7-30eed99a0370",
+      "name": "Insert ai_insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1520,
+        -16
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expand action_items → one item per action, skipping if none\nconst insight    = $('Validate + parse response').item.json;\nconst insightRow = $input.item.json;\n\nif (!insight.action_items?.length) return [];\n\nreturn insight.action_items.map(a => ({\n  json: {\n    insight_id: insightRow.insight_id,\n    client_id:  insight.client_id,\n    text:       a.text,\n    priority:   a.priority\n  }\n}));\n"
+      },
+      "id": "ed99fb72-cd49-4e34-bd15-be0bc7f04dbb",
+      "name": "Expand action items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO action_items (\n  client_id, source_entity_type, source_entity_id,\n  title, details, status, priority\n)\nVALUES (\n  '{{ $json.client_id }}',\n  '{{ $('Validate + parse response').item.json.entity_type }}'::public.analyzable_entity,\n  '{{ $('Validate + parse response').item.json.entity_id }}',\n  '{{ ($json.text || '').replace(/'/g, \"''\") }}',\n  'Generat automàticament per IA',\n  'open'::public.action_status,\n  '{{ $json.priority }}'::public.action_priority\n);",
+        "options": {}
+      },
+      "id": "fd171bfe-0828-425c-bedb-412ea91d87a6",
+      "name": "Upsert action_items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1952,
+        -112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "high-risk",
+              "leftValue": "={{ $('Validate + parse response').item.json.is_high_risk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f21fbdbd-20a4-47cb-980e-465e2af7d24a",
+      "name": "High risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1744,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.name AS client_name\nFROM clients c\nWHERE c.id = '{{ $('Validate + parse response').item.json.client_id }}'\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "331d52a1-76e0-4470-b308-0bf4885f411d",
+      "name": "Fetch client name",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1952,
+        32
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const insight     = $('Validate + parse response').item.json;\nconst clientRow   = $input.item.json;\n\nconst clientName  = clientRow?.client_name ?? 'Client desconegut';\nconst entityLabel = insight.entity_type === 'email_message' ? '📧 Email' : '📝 Transcript';\nconst flags       = [];\nif (insight.complaint_flag)       flags.push('⚠️ Queixa detectada');\nif (insight.urgency_score >= 0.8) flags.push(`🔴 Urgència: ${(insight.urgency_score * 100).toFixed(0)}%`);\nif (insight.needs_follow_up)      flags.push('🔁 Requereix seguiment');\n\nconst topicsStr = insight.topics?.length ? insight.topics.slice(0, 5).join(', ') : '—';\nconst risksStr  = insight.risks?.length  ? insight.risks.slice(0, 3).join(' | ')  : '—';\n\nconst slackText = [\n  `*🚨 Alerta d'alt risc — ${clientName}*`,\n  `${entityLabel} · Assumpte: _${(insight.subject ?? '').substring(0, 100)}_`,\n  '',\n  `*Resum:* ${insight.summary}`,\n  `*Indicadors:* ${flags.join(' · ')}`,\n  `*Temes:* ${topicsStr}`,\n  `*Riscos:* ${risksStr}`\n].join('\\n');\n\nreturn [{\n  json: {\n    slack_text:   slackText,\n    client_name:  clientName,\n    insight\n  }\n}];\n"
+      },
+      "id": "4a373b18-cc99-4117-85ca-8ccf2c2973ac",
+      "name": "Build alert message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U09RKRD7N76",
+          "mode": "list",
+          "cachedResultName": "pol"
+        },
+        "text": "={{ $json.slack_text }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "519bf531-af0b-40c5-9efb-a3e0bc056422",
+      "name": "Slack — Send alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2400,
+        176
+      ],
+      "webhookId": "4e365bbb-4c33-4b66-9c24-f9132762f00a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "rlqgl4bMXXzpceLs",
+          "name": "Slack account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// No-op: skip alert silently\nreturn [];\n"
+      },
+      "id": "7190f141-66d1-4b38-bf76-19699b0bda84",
+      "name": "Skip alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        -16
+      ],
+      "id": "9d23e921-defc-45bd-804f-6b4edea179a3",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5RfluXcVKiX3t8rk",
+          "name": "OpenAiBlumbAccount"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8f6de669-76cd-4744-b6b6-a3b86ceddf8a",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        -16
+      ],
+      "id": "d2fc8ce4-150c-44b3-81ef-14788fe3bbd4",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch pending emails",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch pending transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch pending emails": {
+      "main": [
+        [
+          {
+            "node": "Merge pending items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch pending transcripts": {
+      "main": [
+        [
+          {
+            "node": "Merge pending items",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge pending items": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (1×1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (1×1)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Build prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build prompt": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate + parse response": {
+      "main": [
+        [
+          {
+            "node": "Insert ai_insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert ai_insights": {
+      "main": [
+        [
+          {
+            "node": "Expand action items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "High risk?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand action items": {
+      "main": [
+        [
+          {
+            "node": "Upsert action_items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High risk?": {
+      "main": [
+        [
+          {
+            "node": "Fetch client name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch client name": {
+      "main": [
+        [
+          {
+            "node": "Build alert message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build alert message": {
+      "main": [
+        [
+          {
+            "node": "Slack — Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Send alert": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (1×1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip alert": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (1×1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Validate + parse response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches (1×1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"
+  }
+}
