@@ -155,8 +155,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -544,
-        112
+        800,
+        80
       ],
       "credentials": {
         "postgres": {
@@ -174,8 +174,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -320,
-        112
+        1024,
+        80
       ]
     },
     {
@@ -189,8 +189,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -128,
-        -96
+        1216,
+        -128
       ],
       "credentials": {
         "postgres": {
@@ -202,7 +202,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO email_threads (\n  mailbox_id,\n  provider_thread_id,\n  client_id,\n  subject,\n  first_message_at,\n  last_message_at,\n  message_count,\n  last_direction,\n  status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.raw_payload.Subject.replace(/'/g, \"''\") }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.sent_at }}',\n  1,\n  '{{ $json.direction }}',\n  'open'\n)\nON CONFLICT (mailbox_id, provider_thread_id) DO UPDATE\n  SET last_message_at = GREATEST(email_threads.last_message_at, EXCLUDED.last_message_at),\n      message_count   = email_threads.message_count + 1,\n      last_direction  = EXCLUDED.last_direction,\n      status          = CASE\n        WHEN email_threads.status = 'closed' THEN 'open'\n        ELSE email_threads.status\n      END,\n      client_id       = COALESCE(email_threads.client_id, EXCLUDED.client_id)\nRETURNING id AS thread_id;",
+        "query": "INSERT INTO email_threads (\n  mailbox_id,\n  provider_thread_id,\n  client_id,\n  subject,\n  first_message_at,\n  last_message_at,\n  message_count,\n  last_direction,\n  status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.subject.replace(/'/g, \"''\") }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.sent_at }}',\n  1,\n  '{{ $json.direction }}',\n  'open'\n)\nON CONFLICT (mailbox_id, provider_thread_id) DO UPDATE\n  SET last_message_at = GREATEST(email_threads.last_message_at, EXCLUDED.last_message_at),\n      message_count   = email_threads.message_count + 1,\n      last_direction  = EXCLUDED.last_direction,\n      status          = CASE\n        WHEN email_threads.status = 'closed' THEN 'open'\n        ELSE email_threads.status\n      END,\n      client_id       = COALESCE(email_threads.client_id, EXCLUDED.client_id)\nRETURNING id AS thread_id;",
         "options": {}
       },
       "id": "1951dd39-4e80-4ac6-a124-8fb0f2780564",
@@ -210,8 +210,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -128,
-        112
+        1216,
+        80
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -230,8 +230,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        304,
-        112
+        1648,
+        80
       ]
     },
     {
@@ -245,8 +245,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        528,
-        112
+        1872,
+        80
       ],
       "credentials": {
         "postgres": {
@@ -264,8 +264,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        752,
-        112
+        2096,
+        80
       ]
     },
     {
@@ -279,8 +279,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        960,
-        112
+        2304,
+        80
       ],
       "credentials": {
         "postgres": {
@@ -300,8 +300,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1184,
-        112
+        2528,
+        80
       ],
       "credentials": {
         "postgres": {
@@ -319,8 +319,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1408,
-        112
+        2752,
+        80
       ]
     },
     {
@@ -334,7 +334,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1600,
+        2944,
         112
       ],
       "credentials": {
@@ -372,11 +372,153 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        80,
-        128
+        1424,
+        96
       ],
       "id": "34570962-10a6-4e9a-9de5-82ca0cdf242d",
       "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "885b0a4d-3c53-437e-aaa4-73c4652b591d",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -352,
+        112
+      ],
+      "id": "b5e62d34-806e-4034-8fe7-8645ec431d89",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nconst SKIP_SUBJECT = [\n  /^aceptad[oa]:/i, /^rechazad[oa]:/i,\n  /^accepted:/i, /^declined:/i, /^tentative:/i,\n  /^invitation:/i, /^invitaci[oó]n:/i,\n  /^updated invitation/i, /^canceled event/i, /^evento cancelado/i,\n  /^out of office/i, /^fuera de (la )?oficina/i,\n  /^automatic reply/i, /^respuesta autom[aá]tica/i,\n  /^undelivered mail/i, /^delivery status/i, /^mail delivery failed/i,\n  /^unsubscribe/i, /has accepted this invitation/i,\n  /^nuevo evento:/i, /^new event:/i,\n];\n\nconst SKIP_SENDERS = [\n  /noreply@/i, /no-reply@/i, /no_reply@/i, /donotreply@/i,\n  /notifications?@/i, /calendar-notification@google\\.com/i,\n  /mailer-daemon@/i, /postmaster@/i,\n  /^notify@/i, /^alert@/i, /^info@.*\\.noreply/i,\n];\n\nfor (const item of items) {\n  const { raw_subject, from_email, body_text } = item.json;\n\n  // Skip per patrons de subject\n  if (SKIP_SUBJECT.some(p => p.test(raw_subject ?? ''))) continue;\n\n  // Skip per senders automàtics\n  if (SKIP_SENDERS.some(p => p.test(from_email ?? ''))) continue;\n\n  // Skip si body completament buit\n  if ((body_text ?? '').trim().length === 0) continue;\n\n  results.push({ json: item.json });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        112
+      ],
+      "id": "9846469a-0857-4374-b695-0ca5f380a6a0",
+      "name": "Check Spam",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.classify_prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        96
+      ],
+      "id": "d14b079d-61ef-464f-8792-a8e9bd3aa166",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5RfluXcVKiX3t8rk",
+          "name": "OpenAiBlumbAccount"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\n\nconst prompt = `Eres un clasificador de emails para un CRM empresarial (gestión de relaciones con clientes).\nDecide si este email debe almacenarse en la base de datos o ignorarse.\n\nAsunto: ${(item.raw_subject || '').substring(0, 300)}\nDe: ${item.from_email || ''}\nDirección: ${item.direction}\nFragmento: ${(item.snippet || '').substring(0, 500)}\n\nResponde SOLO con un JSON válido, sin texto adicional:\n{\"action\": \"process\" o \"skip\", \"reason\": \"motivo breve en español\"}\n\nCriterios para SKIP:\n- Newsletters, marketing, publicidad, promociones\n- Notificaciones automáticas de apps o servicios (GitHub, Jira, Trello, Stripe, etc.)\n- Emails puramente transaccionales sin contenido de negocio\n- Confirmaciones de suscripción, verificaciones de cuenta\n- Respuestas automáticas genéricas\n\nCriterios para PROCESS (siempre almacenar):\n- Comunicación directa con clientes, proveedores o colaboradores\n- Consultas, solicitudes, feedback, propuestas, presupuestos\n- Cualquier email con contenido de negocio relevante\n- Emails cortos que forman parte de una conversación real entre personas\n- En caso de duda, siempre PROCESS\n\nJSON:`;\n\nreturn [{ json: { ...item, classify_prompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        96
+      ],
+      "id": "d2d5bf31-9524-4bbd-965d-b48e4ae11601",
+      "name": "Prompt"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55208ca4-cfd9-4fec-b650-4c22e03589fc",
+              "leftValue": "={{ $json }}",
+              "rightValue": "[]",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        96
+      ],
+      "id": "97157ead-5e49-4043-a81f-d368cda817bf",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Prompt').item.json;\nconst aiOutput = $input.item.json;\n\nconst rawText = aiOutput?.output?.[0]?.content?.[0]?.text\n  ?? aiOutput?.message?.content\n  ?? aiOutput?.choices?.[0]?.message?.content\n  ?? '';\n\nlet decision;\ntry {\n  const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  decision = JSON.parse(cleaned);\n} catch {\n  // Si falla el parsing, processar per seguretat\n  decision = { action: 'process' };\n}\n\nif (decision.action === 'skip') return [];\n\n// Treure classify_prompt que ja no cal\nconst { classify_prompt, ...rest } = item;\nreturn [{ json: rest }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        96
+      ],
+      "id": "0ee0c7c8-85ed-4f53-83da-a0bfd78eacba",
+      "name": "Clean Output",
+      "alwaysOutputData": true
     }
   ],
   "connections": {
@@ -451,7 +593,7 @@
       "main": [
         [
           {
-            "node": "Resolve client",
+            "node": "Check Spam",
             "type": "main",
             "index": 0
           }
@@ -595,9 +737,93 @@
           }
         ]
       ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Spam": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Clean Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Resolve client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Output": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "pinData": {},
+  "pinData": {
+    "Manual Trigger": [
+      {}
+    ]
+  },
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "32ca23c584a6940310de9ccd89a8d02b720458089469cd8637c9651cf3659460"

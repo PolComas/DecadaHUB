@@ -1414,23 +1414,33 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
   min-width: 0;
 }
 
 .dismissed-row-copy {
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .dismissed-row-copy strong {
   display: block;
+  width: 100%;
   font-size: 14px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dismissed-row-copy p {
   color: var(--text-tertiary);
   font-size: 12px;
   margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dismissed-row-meta {
@@ -1611,6 +1621,242 @@ a:focus-visible {
   color: var(--text-tertiary);
   font-size: 12px;
   margin-top: 1px;
+}
+
+/* ── Delete button on cards ────────────────────────── */
+.list-card-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.list-card-wrapper .list-card {
+  flex: 1;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.list-card-wrapper .list-card:hover {
+  background: var(--surface-muted);
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 150ms, background 150ms, color 150ms;
+  cursor: pointer;
+  border: none;
+}
+
+.list-card-wrapper:hover .delete-btn {
+  opacity: 1;
+}
+
+.email-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.email-footer .delete-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.delete-btn:hover {
+  background: var(--risk-high-bg);
+  color: var(--risk-high);
+}
+
+/* ── Detail modal (wide) ──────────────────────────── */
+.dialog.wide {
+  width: min(100%, 680px);
+}
+
+.dialog-body {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+  max-height: 60vh;
+  scrollbar-width: thin;
+}
+
+.email-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.email-detail-meta span {
+  background: var(--surface-muted);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.email-body-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Thread conversation in modal */
+.thread-message {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--separator-light);
+}
+
+.thread-message:last-child {
+  border-bottom: none;
+}
+
+.thread-message-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.thread-message-head strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.thread-message-head .thread-chip {
+  font-size: 11px;
+}
+
+.thread-message-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Merged clients section ───────────────────────── */
+.merged-section {
+  margin-top: 4px;
+  padding: 6px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+}
+
+.merged-section-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.merged-section-toggle h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.merged-section-toggle:hover h4 {
+  color: var(--accent-hover);
+}
+
+.merged-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--separator-light);
+  font-size: 13px;
+}
+
+.merged-item:first-child {
+  border-top: none;
+}
+
+.merged-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.merged-item-info strong {
+  font-weight: 600;
+}
+
+.merged-item-info span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.unmerge-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--card);
+  border: 1px solid var(--separator);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.unmerge-btn:hover {
+  background: var(--surface-muted);
+}
+
+/* ── Confirm dialog ───────────────────────────────── */
+.confirm-dialog {
+  width: min(100%, 400px);
+}
+
+.confirm-dialog .dialog-body {
+  padding: 12px 20px 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.confirm-actions button {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-cancel {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--separator);
+}
+
+.confirm-cancel:hover {
+  background: var(--separator);
+}
+
+.confirm-danger {
+  background: var(--risk-high);
+  color: white;
+  border: none;
+}
+
+.confirm-danger:hover {
+  background: #dc2626;
 }
 
 /* ── Animations ─────────────────────────────────────── */

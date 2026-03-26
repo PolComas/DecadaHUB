@@ -1,6 +1,15 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { dismissClient, fetchClientDetail, fetchMergeCandidates, mergeClients } from "../lib/api";
-import { formatDateTime, formatHours, statusLabel } from "../lib/formatters";
+import {
+  deleteEmail,
+  dismissClient,
+  fetchClientDetail,
+  fetchEmailFull,
+  fetchMergeCandidates,
+  fetchThreadMessages,
+  mergeClients,
+  unmergeClient,
+} from "../lib/api";
+import { directionLabel, formatDateTime, formatHours, statusLabel } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
 import {
   ActivityCallout,
@@ -8,7 +17,6 @@ import {
   EmptyState,
   FocusMetric,
   InsightCard,
-  RecentMessageCard,
   RiskPill,
   SkeletonBlock,
   SkeletonTimeline,
@@ -17,8 +25,8 @@ import {
   initials,
   avatarTone,
 } from "../components/ui";
-import { useEffect, useMemo, useState } from "react";
-import type { ClientDetail, MergeCandidate } from "../types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ClientDetail, EmailMessageFull, MergeCandidate } from "../types";
 
 type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "meetings" | "transcripts";
 
@@ -56,60 +64,67 @@ export default function ClientPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
   const [isDismissing, setIsDismissing] = useState(false);
+
+  // Merge dialog
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [mergeCandidates, setMergeCandidates] = useState<MergeCandidate[]>([]);
   const [mergeSearch, setMergeSearch] = useState("");
   const [isMerging, setIsMerging] = useState(false);
   const [isMergeLoading, setIsMergeLoading] = useState(false);
 
-  useEffect(() => {
+  // Email detail modal
+  const [emailDetail, setEmailDetail] = useState<EmailMessageFull | null>(null);
+  const [emailDetailLoading, setEmailDetailLoading] = useState(false);
+
+  // Thread detail modal
+  const [threadMessages, setThreadMessages] = useState<EmailMessageFull[] | null>(null);
+  const [threadDetailSubject, setThreadDetailSubject] = useState<string>("");
+  const [threadDetailLoading, setThreadDetailLoading] = useState(false);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; subject: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Merged clients collapsed
+  const [mergedExpanded, setMergedExpanded] = useState(false);
+
+  const loadDetail = useCallback(async () => {
     if (!clientId) return;
-
-    let isCancelled = false;
-
-    async function run() {
-      setIsLoading(true);
-      setDetailError(null);
-
-      try {
-        const response = await fetchClientDetail(clientId!);
-        if (!isCancelled) {
-          setDetail(response);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          setDetailError(toMessage(error));
-          setDetail(null);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
+    setIsLoading(true);
+    setDetailError(null);
+    try {
+      const response = await fetchClientDetail(clientId);
+      setDetail(response);
+    } catch (error) {
+      setDetailError(toMessage(error));
+      setDetail(null);
+    } finally {
+      setIsLoading(false);
     }
-
-    void run();
-
-    return () => {
-      isCancelled = true;
-    };
   }, [clientId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadDetail().then(() => { if (cancelled) setDetail(null); });
+    return () => { cancelled = true; };
+  }, [loadDetail]);
 
   useEffect(() => {
     setActiveTab("timeline");
   }, [clientId]);
 
+  // ── Handlers ──
+
   async function handleDismiss() {
     if (!clientId || !client) return;
     if (!window.confirm(`Descartar "${client.client_name}"? El domini s'afegirà a la llista d'exclusions.`)) return;
-
     setIsDismissing(true);
     try {
       await dismissClient(clientId, client.primary_domain);
       await refreshDashboard();
       navigate("/", { replace: true });
     } catch (error) {
-      setDetailError(error instanceof Error ? error.message : "Error descartant client.");
+      setDetailError(toMessage(error));
     } finally {
       setIsDismissing(false);
     }
@@ -121,8 +136,7 @@ export default function ClientPage() {
     setMergeSearch("");
     setIsMergeLoading(true);
     try {
-      const candidates = await fetchMergeCandidates(clientId);
-      setMergeCandidates(candidates);
+      setMergeCandidates(await fetchMergeCandidates(clientId));
     } catch {
       setMergeCandidates([]);
     } finally {
@@ -133,17 +147,77 @@ export default function ClientPage() {
   async function handleMerge(targetId: string, targetName: string) {
     if (!clientId || !client) return;
     if (!window.confirm(`Fusionar "${client.client_name}" dins de "${targetName}"? Tots els correus, reunions i dades es mouran al client destí.`)) return;
-
     setIsMerging(true);
     try {
       await mergeClients(clientId, targetId);
       await refreshDashboard();
       navigate(`/clients/${targetId}`, { replace: true });
     } catch (error) {
-      setDetailError(error instanceof Error ? error.message : "Error fusionant clients.");
+      setDetailError(toMessage(error));
     } finally {
       setIsMerging(false);
       setShowMergeDialog(false);
+    }
+  }
+
+  async function handleOpenEmail(messageId: string) {
+    setEmailDetailLoading(true);
+    setEmailDetail(null);
+    try {
+      const full = await fetchEmailFull(messageId);
+      setEmailDetail(full);
+    } catch {
+      setEmailDetail(null);
+    } finally {
+      setEmailDetailLoading(false);
+    }
+  }
+
+  async function handleOpenThread(threadId: string, subject: string) {
+    setThreadDetailLoading(true);
+    setThreadMessages(null);
+    setThreadDetailSubject(subject);
+    try {
+      const messages = await fetchThreadMessages(threadId);
+      setThreadMessages(messages);
+    } catch {
+      setThreadMessages(null);
+    } finally {
+      setThreadDetailLoading(false);
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteEmail(deleteTarget.id);
+      // Remove from local state
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.filter((m) => m.id !== deleteTarget.id),
+              timeline: prev.timeline.filter((e) => e.source_id !== deleteTarget.id),
+            }
+          : prev,
+      );
+      setDeleteTarget(null);
+    } catch (error) {
+      setDetailError(toMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleUnmerge(sourceId: string, sourceName: string) {
+    if (!window.confirm(`Desfusionar "${sourceName}"? El client es restaurarà com a actiu. Les dades històriques es mantindran en aquest client.`)) return;
+    try {
+      await unmergeClient(sourceId);
+      await refreshDashboard();
+      await loadDetail();
+    } catch (error) {
+      setDetailError(toMessage(error));
     }
   }
 
@@ -155,36 +229,16 @@ export default function ClientPage() {
 
   const attentionCallout = useMemo(() => {
     if (!client) return null;
-
     if (client.overdue_actions > 0) {
-      return {
-        title: "Accions vençudes",
-        body: `${client.overdue_actions} accions fora de termini que poden impactar la percepció del client.`,
-        tone: "warning" as const,
-      };
+      return { title: "Accions vençudes", body: `${client.overdue_actions} accions fora de termini que poden impactar la percepció del client.`, tone: "warning" as const };
     }
-
     if (client.stalled_threads_gt_72h > 0) {
-      return {
-        title: "Fils estancats",
-        body: `${client.stalled_threads_gt_72h} fils porten més de 72h sense avançar.`,
-        tone: "warning" as const,
-      };
+      return { title: "Fils estancats", body: `${client.stalled_threads_gt_72h} fils porten més de 72h sense avançar.`, tone: "warning" as const };
     }
-
     if (client.negative_signals_30d > 0) {
-      return {
-        title: "Senyals a seguir",
-        body: `S'han detectat ${client.negative_signals_30d} senyals negatius els últims 30 dies.`,
-        tone: "default" as const,
-      };
+      return { title: "Senyals a seguir", body: `S'han detectat ${client.negative_signals_30d} senyals negatius els últims 30 dies.`, tone: "default" as const };
     }
-
-    return {
-      title: "Relació estable",
-      body: "No hi ha indicadors forts de risc immediat.",
-      tone: "default" as const,
-    };
+    return { title: "Relació estable", body: "No hi ha indicadors forts de risc immediat.", tone: "default" as const };
   }, [client]);
 
   if (!clientId) {
@@ -209,46 +263,27 @@ export default function ClientPage() {
       <section className="detail-hero">
         <div className="detail-hero-copy">
           <div className="detail-breadcrumbs">
-            <Link className="topbar-link" to="/">
-              Dashboard
-            </Link>
+            <Link className="topbar-link" to="/">Dashboard</Link>
             <span>/</span>
             <span>{client?.client_name ?? "Client"}</span>
           </div>
-
           <div className="detail-title-row">
             <div>
               <h2 className="detail-title">{client?.client_name ?? "Carregant..."}</h2>
             </div>
             {client ? <RiskPill score={client.risk_score_heuristic} /> : null}
           </div>
-
           <p className="hero-text">
-            {client?.notes ??
-              "Vista detallada del compte amb context operatiu, timeline i seguiment qualitatiu."}
+            {client?.notes ?? "Vista detallada del compte amb context operatiu, timeline i seguiment qualitatiu."}
           </p>
         </div>
-
         <div className="detail-side-meta">
           <div className="session-chip">{client?.owner_name ?? "Sense owner"}</div>
-          <div className="session-chip muted">
-            {client ? `${client.meetings_30d} reunions / 30d` : "—"}
-          </div>
+          <div className="session-chip muted">{client ? `${client.meetings_30d} reunions / 30d` : "—"}</div>
           {client ? (
             <div className="detail-actions">
-              <button
-                className="ghost-button"
-                onClick={() => void openMergeDialog()}
-                type="button"
-              >
-                Fusionar
-              </button>
-              <button
-                className="ghost-button danger"
-                disabled={isDismissing}
-                onClick={() => void handleDismiss()}
-                type="button"
-              >
+              <button className="ghost-button" onClick={() => void openMergeDialog()} type="button">Fusionar</button>
+              <button className="ghost-button danger" disabled={isDismissing} onClick={() => void handleDismiss()} type="button">
                 {isDismissing ? "Descartant..." : "Descartar"}
               </button>
             </div>
@@ -258,46 +293,40 @@ export default function ClientPage() {
 
       {/* KPIs */}
       <section className="stats-grid detail-stats">
-        <FocusMetric
-          helper="Mitjana en hores laborables"
-          label="Resposta equip"
-          value={client ? formatHours(client.avg_team_response_hours_30d) : "—"}
-        />
-        <FocusMetric
-          helper="Temps fins a qualsevol resposta"
-          label="Resposta client"
-          value={client ? formatHours(client.avg_client_response_hours_30d) : "—"}
-        />
-        <FocusMetric
-          helper="Conversa bloquejada >72h"
-          label="Fils estancats"
-          value={client ? String(client.stalled_threads_gt_72h) : "—"}
-        />
-        <FocusMetric
-          helper="IA últims 30 dies"
-          label="Senyals negatius"
-          value={client ? String(client.negative_signals_30d) : "—"}
-        />
+        <FocusMetric helper="Mitjana en hores laborables" label="Resposta equip" value={client ? formatHours(client.avg_team_response_hours_30d) : "—"} />
+        <FocusMetric helper="Temps fins a qualsevol resposta" label="Resposta client" value={client ? formatHours(client.avg_client_response_hours_30d) : "—"} />
+        <FocusMetric helper="Conversa bloquejada >72h" label="Fils estancats" value={client ? String(client.stalled_threads_gt_72h) : "—"} />
+        <FocusMetric helper="IA últims 30 dies" label="Senyals negatius" value={client ? String(client.negative_signals_30d) : "—"} />
       </section>
 
       {/* Attention callouts */}
       <section className="two-up two-up-wide">
-        {attentionCallout ? (
-          <ActivityCallout
-            body={attentionCallout.body}
-            title={attentionCallout.title}
-            tone={attentionCallout.tone}
-          />
-        ) : null}
+        {attentionCallout ? <ActivityCallout body={attentionCallout.body} title={attentionCallout.title} tone={attentionCallout.tone} /> : null}
         <ActivityCallout
-          body={
-            client
-              ? `${client.emails_sent_30d} enviats, ${client.emails_received_30d} rebuts, ${client.open_actions} accions obertes.`
-              : "Sense context."
-          }
+          body={client ? `${client.emails_sent_30d} enviats, ${client.emails_received_30d} rebuts, ${client.open_actions} accions obertes.` : "Sense context."}
           title="Foto ràpida"
         />
       </section>
+
+      {/* Merged clients section (collapsible) */}
+      {detail?.mergedClients && detail.mergedClients.length > 0 ? (
+        <section className="merged-section">
+          <button className="merged-section-toggle" onClick={() => setMergedExpanded((v) => !v)} type="button">
+            <h4>{mergedExpanded ? "▾" : "▸"} Clients fusionats ({detail.mergedClients.length})</h4>
+          </button>
+          {mergedExpanded && detail.mergedClients.map((mc) => (
+            <div className="merged-item" key={mc.id}>
+              <div className="merged-item-info">
+                <strong>{mc.name}</strong>
+                <span>{mc.primary_domain ?? "Sense domini"}{mc.merged_at ? ` · Fusionat el ${formatDateTime(mc.merged_at)}` : ""}</span>
+              </div>
+              <button className="unmerge-btn" onClick={() => void handleUnmerge(mc.id, mc.name)} type="button">
+                Desfusionar
+              </button>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {detailError ? (
         <section className="callout error">
@@ -309,12 +338,7 @@ export default function ClientPage() {
       {/* Tab navigation */}
       <nav className="tab-nav">
         {TAB_CONFIG.map((tab) => (
-          <button
-            className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            type="button"
-          >
+          <button className={`tab-button ${activeTab === tab.key ? "active" : ""}`} key={tab.key} onClick={() => setActiveTab(tab.key)} type="button">
             {tab.label}
             <span className="tab-badge">{tabCount(tab.key, detail)}</span>
           </button>
@@ -331,10 +355,7 @@ export default function ClientPage() {
             </div>
             {isLoading ? <SkeletonTimeline /> : null}
             {!isLoading && !detail?.timeline.length ? (
-              <EmptyState
-                message="Quan hi hagi correus, reunions o transcripts, apareixeran aquí."
-                title="Sense activitat"
-              />
+              <EmptyState message="Quan hi hagi correus, reunions o transcripts, apareixeran aquí." title="Sense activitat" />
             ) : null}
             {!isLoading && detail?.timeline.length ? (
               <div className="timeline">
@@ -353,21 +374,36 @@ export default function ClientPage() {
               <CountChip>{detail?.messages.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
-              <div className="stack-list">
-                <SkeletonBlock />
-                <SkeletonBlock />
-              </div>
+              <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
             ) : detail?.messages.length ? (
               <div className="stack-list">
                 {detail.messages.map((message) => (
-                  <RecentMessageCard key={message.id} message={message} />
+                  <div className="list-card-wrapper" key={message.id}>
+                    <div className="list-card" onClick={() => void handleOpenEmail(message.id)}>
+                      <div className="list-title-line">
+                        <strong>{message.subject ?? "Sense assumpte"}</strong>
+                        <span className={`thread-chip ${message.direction === "client_to_team" ? "client_to_team" : "team_to_client"}`}>
+                          {directionLabel(message.direction)}
+                        </span>
+                      </div>
+                      <p>{message.snippet ?? "Sense snippet disponible."}</p>
+                      <div className="list-footer email-footer">
+                        <span>{formatDateTime(message.sent_at)}</span>
+                        <button
+                          className="delete-btn"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: message.id, subject: message.subject ?? "Sense assumpte" }); }}
+                          title="Eliminar correu"
+                          type="button"
+                        >
+                          🗑 Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptyState
-                message="Quan hi hagi emails vinculats, es veuran aquí."
-                title="Sense missatges"
-              />
+              <EmptyState message="Quan hi hagi emails vinculats, es veuran aquí." title="Sense missatges" />
             )}
           </>
         )}
@@ -387,10 +423,7 @@ export default function ClientPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState
-                message="Quan la IA processi el contingut, apareixerà aquí."
-                title="Sense insights"
-              />
+              <EmptyState message="Quan la IA processi el contingut, apareixerà aquí." title="Sense insights" />
             )}
           </>
         )}
@@ -402,10 +435,7 @@ export default function ClientPage() {
               <CountChip>{detail?.actions.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
-              <div className="stack-list">
-                <SkeletonBlock />
-                <SkeletonBlock />
-              </div>
+              <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
             ) : detail?.actions.length ? (
               <div className="stack-list">
                 {detail.actions.map((action) => (
@@ -436,19 +466,19 @@ export default function ClientPage() {
               <CountChip>{detail?.threads.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
-              <div className="stack-list">
-                <SkeletonBlock />
-                <SkeletonBlock />
-              </div>
+              <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
             ) : detail?.threads.length ? (
               <div className="stack-list">
                 {detail.threads.map((thread) => (
-                  <div className="list-card" key={thread.id}>
+                  <div
+                    className="list-card"
+                    key={thread.id}
+                    onClick={() => void handleOpenThread(thread.id, thread.subject ?? "Sense assumpte")}
+                    style={{ cursor: "pointer" }}
+                  >
                     <div className="list-title-line">
                       <strong>{thread.subject ?? "Sense assumpte"}</strong>
-                      <span className={`thread-chip ${thread.status}`}>
-                        {statusLabel(thread.status)}
-                      </span>
+                      <span className={`thread-chip ${thread.status}`}>{statusLabel(thread.status)}</span>
                     </div>
                     <div className="list-footer">
                       <span>{thread.message_count} missatges</span>
@@ -470,10 +500,7 @@ export default function ClientPage() {
               <CountChip>{detail?.meetings.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
-              <div className="stack-list">
-                <SkeletonBlock />
-                <SkeletonBlock />
-              </div>
+              <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
             ) : detail?.meetings.length ? (
               <div className="stack-list">
                 {detail.meetings.map((meeting) => (
@@ -501,20 +528,11 @@ export default function ClientPage() {
               <CountChip>{detail?.transcripts.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
-              <div className="stack-list">
-                <SkeletonBlock />
-                <SkeletonBlock />
-              </div>
+              <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
             ) : detail?.transcripts.length ? (
               <div className="stack-list">
                 {detail.transcripts.map((transcript) => (
-                  <a
-                    className="list-card link-card"
-                    href={transcript.document_url ?? undefined}
-                    key={transcript.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
+                  <a className="list-card link-card" href={transcript.document_url ?? undefined} key={transcript.id} rel="noreferrer" target="_blank">
                     <strong>{transcript.file_name ?? "Transcript"}</strong>
                     <p>{transcript.content_text.slice(0, 160)}...</p>
                     <div className="list-footer">
@@ -532,31 +550,19 @@ export default function ClientPage() {
         )}
       </section>
 
-      {/* Merge dialog */}
+      {/* ── Merge dialog ── */}
       {showMergeDialog && (
         <div className="dialog-backdrop" onClick={() => setShowMergeDialog(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-header">
               <h3>Fusionar client</h3>
-              <button
-                className="dialog-close"
-                onClick={() => setShowMergeDialog(false)}
-                type="button"
-              >
-                &times;
-              </button>
+              <button className="dialog-close" onClick={() => setShowMergeDialog(false)} type="button">&times;</button>
             </div>
             <p className="dialog-description">
               Selecciona el client destí. Tots els correus, reunions, insights i accions de
               <strong> {client?.client_name}</strong> es mouran al client seleccionat.
             </p>
-            <input
-              className="dialog-search"
-              placeholder="Cercar client destí..."
-              value={mergeSearch}
-              onChange={(e) => setMergeSearch(e.target.value)}
-              autoFocus
-            />
+            <input className="dialog-search" placeholder="Cercar client destí..." value={mergeSearch} onChange={(e) => setMergeSearch(e.target.value)} autoFocus />
             <div className="dialog-list">
               {isMergeLoading ? (
                 <div className="dialog-loading">Carregant clients...</div>
@@ -564,16 +570,8 @@ export default function ClientPage() {
                 <div className="dialog-empty">Cap client trobat.</div>
               ) : (
                 filteredMergeCandidates.map((candidate) => (
-                  <button
-                    className="dialog-item"
-                    disabled={isMerging}
-                    key={candidate.id}
-                    onClick={() => void handleMerge(candidate.id, candidate.name)}
-                    type="button"
-                  >
-                    <div className={`item-avatar sm ${avatarTone(candidate.name)}`}>
-                      {initials(candidate.name)}
-                    </div>
+                  <button className="dialog-item" disabled={isMerging} key={candidate.id} onClick={() => void handleMerge(candidate.id, candidate.name)} type="button">
+                    <div className={`item-avatar sm ${avatarTone(candidate.name)}`}>{initials(candidate.name)}</div>
                     <div className="dialog-item-copy">
                       <strong>{candidate.name}</strong>
                       <span>{candidate.primary_domain ?? ""}</span>
@@ -581,6 +579,91 @@ export default function ClientPage() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Email detail modal ── */}
+      {(emailDetail || emailDetailLoading) && (
+        <div className="dialog-backdrop" onClick={() => { setEmailDetail(null); setEmailDetailLoading(false); }}>
+          <div className="dialog wide" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3>{emailDetail?.subject ?? "Carregant..."}</h3>
+              <button className="dialog-close" onClick={() => { setEmailDetail(null); setEmailDetailLoading(false); }} type="button">&times;</button>
+            </div>
+            <div className="dialog-body">
+              {emailDetailLoading ? (
+                <SkeletonBlock tall />
+              ) : emailDetail ? (
+                <>
+                  <div className="email-detail-meta">
+                    <span>{directionLabel(emailDetail.direction)}</span>
+                    {emailDetail.sender_email ? <span>De: {emailDetail.sender_email}</span> : null}
+                    <span>{formatDateTime(emailDetail.sent_at)}</span>
+                  </div>
+                  <div className="email-body-text">
+                    {emailDetail.body_text || emailDetail.snippet || "Sense contingut."}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Thread detail modal ── */}
+      {(threadMessages || threadDetailLoading) && (
+        <div className="dialog-backdrop" onClick={() => { setThreadMessages(null); setThreadDetailLoading(false); }}>
+          <div className="dialog wide" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3>{threadDetailSubject}</h3>
+              <button className="dialog-close" onClick={() => { setThreadMessages(null); setThreadDetailLoading(false); }} type="button">&times;</button>
+            </div>
+            <div className="dialog-body">
+              {threadDetailLoading ? (
+                <SkeletonBlock tall />
+              ) : threadMessages?.length ? (
+                threadMessages.map((msg) => (
+                  <div className="thread-message" key={msg.id}>
+                    <div className="thread-message-head">
+                      <strong>{msg.sender_email ?? "Desconegut"}</strong>
+                      <span className={`thread-chip ${msg.direction === "client_to_team" ? "client_to_team" : "team_to_client"}`}>
+                        {directionLabel(msg.direction)}
+                      </span>
+                    </div>
+                    <div className="thread-message-head">
+                      <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{formatDateTime(msg.sent_at)}</span>
+                    </div>
+                    <div className="thread-message-body">
+                      {msg.body_text || msg.snippet || "Sense contingut."}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState message="No s'han trobat missatges en aquest fil." title="Fil buit" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation dialog ── */}
+      {deleteTarget && (
+        <div className="dialog-backdrop" onClick={() => setDeleteTarget(null)}>
+          <div className="dialog confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3>Eliminar correu</h3>
+              <button className="dialog-close" onClick={() => setDeleteTarget(null)} type="button">&times;</button>
+            </div>
+            <div className="dialog-body">
+              <p>Segur que vols eliminar el correu <strong>"{deleteTarget.subject}"</strong>? Aquesta acció no es pot desfer.</p>
+              <div className="confirm-actions">
+                <button className="confirm-cancel" onClick={() => setDeleteTarget(null)} type="button">Cancel·lar</button>
+                <button className="confirm-danger" disabled={isDeleting} onClick={() => void handleDeleteConfirm()} type="button">
+                  {isDeleting ? "Eliminant..." : "Eliminar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -593,6 +676,5 @@ function toMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
-
   return "S'ha produït un error inesperat.";
 }

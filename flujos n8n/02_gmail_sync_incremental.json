@@ -10,13 +10,13 @@
           ]
         }
       },
-      "id": "0531c742-d710-40db-a89a-35df57856ca8",
+      "id": "29c0dacf-9555-4b49-817e-53ada776891f",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1632,
-        -480
+        -1600,
+        -448
       ]
     },
     {
@@ -25,13 +25,13 @@
         "query": "SELECT m.id AS mailbox_id, m.email AS mailbox_email\nFROM mailboxes m\nWHERE m.is_active = true\nORDER BY m.email;",
         "options": {}
       },
-      "id": "726008f0-b382-4b39-a3cc-75fb5219c44e",
+      "id": "3ba55848-8554-41cd-a352-5685b1dcd228",
       "name": "Get active mailboxes",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -1408,
-        -480
+        -1424,
+        -448
       ],
       "credentials": {
         "postgres": {
@@ -44,13 +44,13 @@
       "parameters": {
         "options": {}
       },
-      "id": "5228391b-8098-4a17-a02a-61e7694b2857",
+      "id": "24d22352-c81a-4d0e-9d22-1873c2b29aad",
       "name": "Split mailboxes",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -1184,
-        -480
+        -1200,
+        -448
       ]
     },
     {
@@ -59,13 +59,13 @@
         "query": "SELECT COALESCE(\n  (SELECT cursor_value FROM sync_cursors\n   WHERE integration_key = 'gmail_date::' || '{{ $json.mailbox_email }}'),\n  to_char(now() - interval '2 days', 'YYYY/MM/DD')\n) AS last_sync_date;",
         "options": {}
       },
-      "id": "26ff3a43-4a03-43f8-a6cd-05d25913b449",
+      "id": "d63b586f-d38f-403d-9c45-43f7d836c2f9",
       "name": "Read last sync date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -960,
-        -480
+        -976,
+        -448
       ],
       "credentials": {
         "postgres": {
@@ -78,13 +78,13 @@
       "parameters": {
         "jsCode": "const mailbox = $('Split mailboxes').item.json;\nconst row = $input.item.json;\n\n// Subtract 1 day from last_sync_date for safety overlap\nconst d = new Date(row.last_sync_date.replace(/\\//g, '-'));\nd.setDate(d.getDate() - 1);\nconst afterDate = d.toISOString().slice(0, 10).replace(/-/g, '/');\n\nreturn [{\n  json: {\n    mailbox_id:    mailbox.mailbox_id,\n    mailbox_email: mailbox.mailbox_email,\n    after_date:    afterDate\n  }\n}];"
       },
-      "id": "2be109cf-4b10-46ae-8fc9-3359a2865903",
+      "id": "7619a51e-8eec-494b-8c67-6185dc02b503",
       "name": "Build Gmail query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -736,
-        -480
+        -752,
+        -448
       ]
     },
     {
@@ -95,13 +95,13 @@
           "q": "=after:{{ $json.after_date }} -in:chats"
         }
       },
-      "id": "167707f2-faf9-4b32-bf6b-35d4851826b3",
+      "id": "c174cf37-8796-4dd4-baf1-78405fdff75c",
       "name": "Gmail — List messages",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -512,
-        -480
+        -528,
+        -448
       ],
       "webhookId": "54ab907e-6fa4-4e38-a482-cb728feff156",
       "credentials": {
@@ -115,13 +115,13 @@
       "parameters": {
         "jsCode": "const esc = (str) => (str ?? '').replace(/'/g, \"''\");\n\nconst FREEMAIL = new Set([\n  'gmail.com','googlemail.com','outlook.com','hotmail.com','hotmail.es',\n  'live.com','yahoo.com','yahoo.es','icloud.com','me.com','mac.com',\n  'protonmail.com','proton.me','aol.com','zoho.com','mail.com',\n  'gmx.com','gmx.es','yandex.com','tutanota.com','fastmail.com'\n]);\n\nconst ctx = $('Build Gmail query').first().json;\nconst mailboxEmail = ctx.mailbox_email.toLowerCase();\nconst mailboxId    = ctx.mailbox_id;\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n\n  const rawFrom    = msg.From    ?? '';\n  const rawTo      = msg.To      ?? '';\n  const rawCc      = msg.Cc      ?? msg.CC ?? '';\n  const rawSubject = msg.Subject ?? msg.subject ?? '';\n\n  // Robust address parser\n  const parseAddresses = (raw, role) => {\n    if (!raw) return [];\n    return raw.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(addr => {\n      addr = addr.trim();\n      const angleMatch = addr.match(/<([^>]+)>/);\n      if (angleMatch) {\n        const email = angleMatch[1].trim().toLowerCase();\n        const namePart = addr.slice(0, addr.indexOf('<')).replace(/^[\"'\\s]+|[\"'\\s]+$/g, '').trim();\n        return { email, name: esc(namePart), role };\n      }\n      const bareEmail = addr.replace(/^[\"'\\s]+|[\"'\\s]+$/g, '').toLowerCase();\n      return { email: bareEmail, name: '', role };\n    }).filter(p => p.email && p.email.includes('@'));\n  };\n\n  const participants = [\n    ...parseAddresses(rawFrom, 'from'),\n    ...parseAddresses(rawTo,   'to'),\n    ...parseAddresses(rawCc,   'cc')\n  ];\n\n  const fromEntry  = participants.find(p => p.role === 'from');\n  const fromEmail  = fromEntry?.email ?? '';\n  const fromDomain = fromEmail.includes('@') ? fromEmail.split('@')[1] : '';\n\n  const allRecipients = participants\n    .filter(p => p.role === 'to' || p.role === 'cc')\n    .map(p => p.email);\n\n  let direction;\n  if (fromEmail === mailboxEmail) {\n    direction = 'team_to_client';\n  } else if (allRecipients.includes(mailboxEmail)) {\n    direction = 'client_to_team';\n  } else {\n    direction = 'internal';\n  }\n\n  // For team_to_client: resolve from RECIPIENT, not sender\n  let resolveEmail, resolveDomain;\n  if (direction === 'team_to_client') {\n    const extRecipient = participants.find(\n      p => (p.role === 'to' || p.role === 'cc') && p.email !== mailboxEmail\n    );\n    resolveEmail  = extRecipient?.email ?? '';\n    resolveDomain = resolveEmail.includes('@') ? resolveEmail.split('@')[1] : '';\n  } else {\n    resolveEmail  = fromEmail;\n    resolveDomain = fromDomain;\n  }\n\n  // Freemail: don't resolve by domain (would merge unrelated people)\n  if (FREEMAIL.has(resolveDomain)) {\n    resolveDomain = '';\n  }\n\n  const cleanSubject = rawSubject\n    .replace(/^(Re|RE|Fwd|FWD|Fw|FW):\\s*/g, '')\n    .trim();\n\n  const bodyText = msg.snippet ?? '';\n\n  const sentAt = msg.internalDate\n    ? new Date(parseInt(msg.internalDate)).toISOString()\n    : new Date().toISOString();\n\n  // Resolve display name (from the person we're resolving against)\n  let resolveDisplayName = '';\n  if (direction === 'team_to_client') {\n    const extRecipient = participants.find(\n      p => (p.role === 'to' || p.role === 'cc') && p.email !== mailboxEmail\n    );\n    resolveDisplayName = extRecipient?.name ?? '';\n  } else {\n    resolveDisplayName = fromEntry?.name ?? '';\n  }\n  results.push({\n    json: {\n      provider_message_id: msg.id,\n      provider_thread_id:  msg.threadId,\n      internet_message_id: '',\n      subject:             esc(cleanSubject),\n      raw_subject:         esc(rawSubject),\n      snippet:             esc(msg.snippet ?? ''),\n      body_text:           esc(bodyText),\n      sent_at:             sentAt,\n      direction,\n      participants,\n      from_email:          fromEmail,\n      from_domain:         fromDomain,\n      resolve_email:       resolveEmail,\n      resolve_domain:      resolveDomain,\n      mailbox_id:          mailboxId,\n      mailbox_email:       mailboxEmail,\n      resolve_display_name: resolveDisplayName,\n      raw_payload:         JSON.stringify(msg).replace(/'/g, \"''\")\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "adb110b4-447a-4da1-addf-58007e14664f",
+      "id": "50bdbe9d-2e19-4cef-bda8-20fa044f368c",
       "name": "Normalitza email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -288,
-        -480
+        -128,
+        -432
       ]
     },
     {
@@ -130,13 +130,13 @@
         "query": "SELECT * FROM resolve_or_create_client(\n  '{{ $json.resolve_email }}',\n  '{{ $json.resolve_domain }}',\n  '{{ $json.resolve_display_name }}'\n)",
         "options": {}
       },
-      "id": "d2481c54-db6a-4053-bcb2-88ad33cc8c16",
+      "id": "40b5e417-d279-4e59-81df-ca7f9558592e",
       "name": "Resolve client",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -64,
-        -480
+        1392,
+        -464
       ],
       "credentials": {
         "postgres": {
@@ -149,13 +149,13 @@
       "parameters": {
         "jsCode": "const allNormalized = $('Normalitza email').all();\nconst allClients = $input.all();\n\nreturn allClients.map((clientItem, i) => {\n  const normalized = allNormalized[i].json;\n  const clientRow = clientItem.json;\n  return {\n    json: {\n      ...normalized,\n      client_id: clientRow?.client_id ?? null,\n      needs_manual_review: !clientRow?.client_id\n    }\n  };\n});"
       },
-      "id": "73776a65-2902-4f53-b11c-d77419f90e2a",
+      "id": "0713dda1-c0d6-4afe-8a86-432124d2cd6b",
       "name": "Merge client_id",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        -480
+        1616,
+        -464
       ]
     },
     {
@@ -164,13 +164,13 @@
         "query": "INSERT INTO email_threads (\n  mailbox_id, provider_thread_id, client_id, subject,\n  first_message_at, last_message_at, message_count, last_direction, status\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.provider_thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.subject }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.sent_at }}',\n  1,\n  '{{ $json.direction }}',\n  CASE\n    WHEN '{{ $json.direction }}' = 'client_to_team' THEN 'waiting_team'::public.thread_status\n    WHEN '{{ $json.direction }}' = 'team_to_client' THEN 'waiting_client'::public.thread_status\n    ELSE 'open'::public.thread_status\n  END\n)\nON CONFLICT (mailbox_id, provider_thread_id) DO UPDATE\n  SET last_message_at = GREATEST(email_threads.last_message_at, EXCLUDED.last_message_at),\n      message_count   = email_threads.message_count + 1,\n      last_direction  = EXCLUDED.last_direction,\n      client_id       = COALESCE(email_threads.client_id, EXCLUDED.client_id),\n      status          = CASE\n        WHEN EXCLUDED.last_direction = 'client_to_team' THEN 'waiting_team'::public.thread_status\n        WHEN EXCLUDED.last_direction = 'team_to_client' THEN 'waiting_client'::public.thread_status\n        WHEN email_threads.status    = 'closed'         THEN 'open'::public.thread_status\n        ELSE email_threads.status\n      END\nRETURNING id AS thread_id;",
         "options": {}
       },
-      "id": "1025f30f-313e-41fa-8728-c564d0ea2be4",
+      "id": "f1271c42-5190-42e0-805e-cb2b143cc2e1",
       "name": "Upsert thread",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        384,
-        -480
+        1840,
+        -464
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -184,13 +184,13 @@
       "parameters": {
         "jsCode": "const allMerged = $('Merge client_id').all();\nconst allThreads = $input.all();\n\nreturn allThreads.map((threadItem, i) => {\n  const msg = allMerged[i].json;\n  const threadRow = threadItem.json;\n  return {\n    json: { ...msg, thread_id: threadRow.thread_id }\n  };\n});"
       },
-      "id": "e2af108a-c3da-4d4a-b28b-482d66a68b84",
+      "id": "fbffec6c-e00c-40d1-bba4-88f7aa4e36da",
       "name": "Attach thread_id",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        608,
-        -480
+        2064,
+        -464
       ]
     },
     {
@@ -199,13 +199,13 @@
         "query": "INSERT INTO email_messages (\n  mailbox_id, thread_id, client_id, provider_message_id, internet_message_id,\n  subject, snippet, body_text, sent_at, direction, raw_payload\n)\nVALUES (\n  '{{ $json.mailbox_id }}',\n  '{{ $json.thread_id }}',\n  {{ $json.client_id !== null ? \"'\" + $json.client_id + \"'\" : 'NULL' }},\n  '{{ $json.provider_message_id }}',\n  '{{ $json.internet_message_id }}',\n  '{{ $json.subject }}',\n  '{{ $json.snippet }}',\n  '{{ $json.body_text }}',\n  '{{ $json.sent_at }}',\n  '{{ $json.direction }}',\n  '{{ $json.raw_payload }}'::jsonb\n)\nON CONFLICT (mailbox_id, provider_message_id) DO UPDATE\n  SET thread_id           = EXCLUDED.thread_id,\n      client_id           = COALESCE(email_messages.client_id, EXCLUDED.client_id),\n      snippet             = EXCLUDED.snippet,\n      body_text           = EXCLUDED.body_text,\n      direction           = EXCLUDED.direction,\n      raw_payload         = EXCLUDED.raw_payload\nRETURNING id AS message_id;",
         "options": {}
       },
-      "id": "7c8f4683-7d62-4e9a-ba6d-0d8f945f3760",
+      "id": "cebbfaf4-2905-456e-9ff5-0b23130ff7a2",
       "name": "Upsert message",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        832,
-        -480
+        2288,
+        -464
       ],
       "credentials": {
         "postgres": {
@@ -218,13 +218,13 @@
       "parameters": {
         "jsCode": "const allAttached = $('Attach thread_id').all();\nconst allMessages = $input.all();\n\nconst results = [];\nfor (let i = 0; i < allMessages.length; i++) {\n  const msg = allAttached[i].json;\n  const messageRow = allMessages[i].json;\n  for (const p of msg.participants) {\n    results.push({\n      json: {\n        message_id: messageRow.message_id,\n        thread_id:  msg.thread_id,\n        email:      p.email,\n        name:       p.name,\n        role:       p.role\n      }\n    });\n  }\n}\nreturn results;"
       },
-      "id": "d35eb180-4430-4e08-b68e-d0806cdccf50",
+      "id": "4f5e9023-aace-4af0-a7b9-d971723862c6",
       "name": "Expand participants",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1056,
-        -480
+        2512,
+        -464
       ]
     },
     {
@@ -233,13 +233,13 @@
         "query": "INSERT INTO email_message_participants (message_id, email, full_name, participant_role)\nVALUES (\n  '{{ $json.message_id }}',\n  '{{ $json.email }}',\n  '{{ ($json.name || '').replace(/'/g, \"''\") }}',\n  '{{ $json.role }}'\n)\nON CONFLICT (message_id, participant_role, email) DO NOTHING;",
         "options": {}
       },
-      "id": "ccbdc665-be9e-4519-a07b-d9585d314a19",
+      "id": "ea32fbf0-abf1-461d-80df-4497eeaf75b1",
       "name": "Upsert participants",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1280,
-        -480
+        2736,
+        -464
       ],
       "credentials": {
         "postgres": {
@@ -252,13 +252,13 @@
       "parameters": {
         "jsCode": "// Get thread_ids from Expand participants (not from $input which comes from Upsert)\nconst allParticipants = $('Expand participants').all();\nconst seen = new Set();\nconst results = [];\nfor (const item of allParticipants) {\n  const tid = item.json.thread_id;\n  if (tid && !seen.has(tid)) {\n    seen.add(tid);\n    results.push({ json: { thread_id: tid } });\n  }\n}\nreturn results;"
       },
-      "id": "ee61ef2b-561c-4c1d-92f9-0b66ab1ff5e4",
+      "id": "db771bf1-1235-461d-9469-221446b0eabd",
       "name": "Deduplicate thread_ids",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1504,
-        -480
+        2960,
+        -464
       ]
     },
     {
@@ -267,13 +267,13 @@
         "query": "UPDATE email_threads SET\n  message_count    = (SELECT count(*) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}'),\n  first_message_at = (SELECT min(sent_at) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}'),\n  last_message_at  = (SELECT max(sent_at) FROM email_messages WHERE thread_id = '{{ $json.thread_id }}')\nWHERE id = '{{ $json.thread_id }}';",
         "options": {}
       },
-      "id": "9fd569fb-1e01-4e2e-8e1f-fde1a815b7f3",
+      "id": "1fad6add-5ab9-4ce2-b39d-58e56dcd3f31",
       "name": "Update thread aggregates",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1728,
-        -480
+        3152,
+        -464
       ],
       "credentials": {
         "postgres": {
@@ -288,13 +288,13 @@
         "query": "INSERT INTO sync_cursors (integration_key, cursor_value)\nVALUES (\n  'gmail_date::' || '{{ $('Build Gmail query').first().json.mailbox_email }}',\n  to_char(now(), 'YYYY/MM/DD')\n)\nON CONFLICT (integration_key) DO UPDATE\n  SET cursor_value = EXCLUDED.cursor_value,\n      updated_at   = now();",
         "options": {}
       },
-      "id": "19fc3864-2127-4498-a0a2-da61adab79bf",
+      "id": "d848cb77-e226-4149-b634-1814915ea952",
       "name": "Save sync date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1952,
-        -480
+        3344,
+        -464
       ],
       "credentials": {
         "postgres": {
@@ -302,6 +302,161 @@
           "name": "Postgres Decada"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "885b0a4d-3c53-437e-aaa4-73c4652b591d",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        -432
+      ],
+      "id": "e0175136-65ed-46f9-ab22-0b9c76375df8",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nconst SKIP_SUBJECT = [\n  /^aceptad[oa]:/i, /^rechazad[oa]:/i,\n  /^accepted:/i, /^declined:/i, /^tentative:/i,\n  /^invitation:/i, /^invitaci[oó]n:/i,\n  /^updated invitation/i, /^canceled event/i, /^evento cancelado/i,\n  /^out of office/i, /^fuera de (la )?oficina/i,\n  /^automatic reply/i, /^respuesta autom[aá]tica/i,\n  /^undelivered mail/i, /^delivery status/i, /^mail delivery failed/i,\n  /^unsubscribe/i, /has accepted this invitation/i,\n  /^nuevo evento:/i, /^new event:/i,\n];\n\nconst SKIP_SENDERS = [\n  /noreply@/i, /no-reply@/i, /no_reply@/i, /donotreply@/i,\n  /notifications?@/i, /calendar-notification@google\\.com/i,\n  /mailer-daemon@/i, /postmaster@/i,\n  /^notify@/i, /^alert@/i, /^info@.*\\.noreply/i,\n];\n\nfor (const item of items) {\n  const { raw_subject, from_email, body_text } = item.json;\n\n  // Skip per patrons de subject\n  if (SKIP_SUBJECT.some(p => p.test(raw_subject ?? ''))) continue;\n\n  // Skip per senders automàtics\n  if (SKIP_SENDERS.some(p => p.test(from_email ?? ''))) continue;\n\n  // Skip si body completament buit\n  if ((body_text ?? '').trim().length === 0) continue;\n\n  results.push({ json: item.json });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -432
+      ],
+      "id": "b8f93440-cdbf-45ef-ba6e-aa9fee129e6a",
+      "name": "Check Spam",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.classify_prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        -448
+      ],
+      "id": "e7c61213-0f3a-40b6-bcdc-710df1ec5168",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5RfluXcVKiX3t8rk",
+          "name": "OpenAiBlumbAccount"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\n\nconst prompt = `Eres un clasificador de emails para un CRM empresarial (gestión de relaciones con clientes).\nDecide si este email debe almacenarse en la base de datos o ignorarse.\n\nAsunto: ${(item.raw_subject || '').substring(0, 300)}\nDe: ${item.from_email || ''}\nDirección: ${item.direction}\nFragmento: ${(item.snippet || '').substring(0, 500)}\n\nResponde SOLO con un JSON válido, sin texto adicional:\n{\"action\": \"process\" o \"skip\", \"reason\": \"motivo breve en español\"}\n\nCriterios para SKIP:\n- Newsletters, marketing, publicidad, promociones\n- Notificaciones automáticas de apps o servicios (GitHub, Jira, Trello, Stripe, etc.)\n- Emails puramente transaccionales sin contenido de negocio\n- Confirmaciones de suscripción, verificaciones de cuenta\n- Respuestas automáticas genéricas\n\nCriterios para PROCESS (siempre almacenar):\n- Comunicación directa con clientes, proveedores o colaboradores\n- Consultas, solicitudes, feedback, propuestas, presupuestos\n- Cualquier email con contenido de negocio relevante\n- Emails cortos que forman parte de una conversación real entre personas\n- En caso de duda, siempre PROCESS\n\nJSON:`;\n\nreturn [{ json: { ...item, classify_prompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -448
+      ],
+      "id": "71ca5bb6-86cd-4885-a0ab-bcc171f38a6f",
+      "name": "Prompt"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55208ca4-cfd9-4fec-b650-4c22e03589fc",
+              "leftValue": "={{ $json }}",
+              "rightValue": "[]",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        -448
+      ],
+      "id": "abc9ddb1-c4ee-4d51-a10d-728ab03b65e7",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Prompt').item.json;\nconst aiOutput = $input.item.json;\n\nconst rawText = aiOutput?.output?.[0]?.content?.[0]?.text\n  ?? aiOutput?.message?.content\n  ?? aiOutput?.choices?.[0]?.message?.content\n  ?? '';\n\nlet decision;\ntry {\n  const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  decision = JSON.parse(cleaned);\n} catch {\n  // Si falla el parsing, processar per seguretat\n  decision = { action: 'process' };\n}\n\nif (decision.action === 'skip') return [];\n\n// Treure classify_prompt que ja no cal\nconst { classify_prompt, ...rest } = item;\nreturn [{ json: rest }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -448
+      ],
+      "id": "6662ccf4-d810-4250-8b9a-7d591fd6ff73",
+      "name": "Clean Output",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -320,
+        -448
+      ],
+      "id": "a7067a0b-d0fa-4f9a-a02d-8ad794dfa19a",
+      "name": "Loop Over Items"
     }
   ],
   "connections": {
@@ -365,7 +520,7 @@
       "main": [
         [
           {
-            "node": "Normalitza email",
+            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }
@@ -376,7 +531,7 @@
       "main": [
         [
           {
-            "node": "Resolve client",
+            "node": "Check Spam",
             "type": "main",
             "index": 0
           }
@@ -486,7 +641,105 @@
       "main": [
         [
           {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Spam": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Clean Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Resolve client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Output": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
             "node": "Split mailboxes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalitza email",
             "type": "main",
             "index": 0
           }

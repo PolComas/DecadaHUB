@@ -76,6 +76,18 @@ export interface EmailMessage {
   direction: MessageDirection;
 }
 
+export interface EmailMessageFull extends EmailMessage {
+  body_text: string | null;
+  sender_email?: string | null;
+}
+
+export interface MergedClient {
+  id: string;
+  name: string;
+  primary_domain: string | null;
+  merged_at: string | null;
+}
+
 export interface Meeting {
   id: string;
   client_id: string | null;
@@ -166,6 +178,7 @@ export interface ClientDetail {
   insights: AiInsight[];
   transcripts: Transcript[];
   timeline: TimelineEvent[];
+  mergedClients: MergedClient[];
 }
 
 export interface DismissedClient {

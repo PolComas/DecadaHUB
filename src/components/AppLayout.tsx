@@ -111,7 +111,7 @@ export default function AppLayout() {
       />
 
       <main className="content-area">
-        <div className={`content-shell ${selectedClientId ? "content-shell-wide" : ""}`}>
+        <div className="content-shell content-shell-wide">
           <header className="topbar">
             <div className="topbar-left">
               <button

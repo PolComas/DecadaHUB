@@ -83,7 +83,7 @@ export default function DismissedPage() {
         ) : (
           <div className="stack-list">
             {clients.map((client) => (
-              <div className="dismissed-row" key={client.id}>
+              <div className="dismissed-row" key={client.id} title={client.name}>
                 <div className="dismissed-row-main">
                   <div className={`item-avatar ${avatarTone(client.name)}`}>
                     {initials(client.name)}
