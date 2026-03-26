@@ -5,35 +5,35 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 10
+              "field": "hours"
             }
           ]
         }
       },
-      "id": "346f7f93-b4c8-42fb-90d0-258d9aebdff8",
+      "id": "51193dd9-affe-4bcf-aa61-696f5cdc8fac",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -368,
-        -32
+        -480,
+        144
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  em.id          AS entity_id,\n  'email_message' AS entity_type,\n  em.client_id,\n  em.subject,\n  em.body_text,\n  em.direction,\n  em.sent_at\nFROM email_messages em\nWHERE em.client_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = em.id\n      AND ai.entity_type = 'email_message'\n  )\nORDER BY em.sent_at DESC\nLIMIT 20;",
+        "query": "SELECT\n  em.id           AS entity_id,\n  'email_message' AS entity_type,\n  em.client_id,\n  em.subject,\n  em.body_text,\n  em.direction,\n  em.sent_at\nFROM email_messages em\nWHERE em.client_id IS NOT NULL\n  AND em.direction = 'client_to_team'\n  AND NOT EXISTS (\n    SELECT 1\n    FROM ai_insights ai\n    WHERE ai.entity_id = em.id\n      AND ai.entity_type = 'email_message'\n  )\nORDER BY em.sent_at DESC\nLIMIT 20;",
         "options": {}
       },
-      "id": "aaa2a05f-cb57-4367-8e05-59d78bda6ac7",
+      "id": "5533780e-aec9-42b8-bcea-2416ef5f92a3",
       "name": "Fetch pending emails",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -144,
-        -128
+        -240,
+        -16
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "3Kp5Kb17YoxCT3Ll",
@@ -47,14 +47,15 @@
         "query": "SELECT\n  t.id             AS entity_id,\n  'transcript'      AS entity_type,\n  t.client_id,\n  t.file_name       AS subject,\n  t.content_text    AS body_text,\n  'internal'        AS direction,\n  t.transcript_at   AS sent_at\nFROM transcripts t\nWHERE t.client_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = t.id\n      AND ai.entity_type = 'transcript'\n  )\nORDER BY t.transcript_at DESC\nLIMIT 10;",
         "options": {}
       },
-      "id": "ba08ca42-53bb-4c58-a65d-18964777a991",
+      "id": "8ba5d6ce-2bdf-4f0d-b926-f85c60609066",
       "name": "Fetch pending transcripts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -144,
-        80
+        -240,
+        144
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "3Kp5Kb17YoxCT3Ll",
@@ -63,220 +64,66 @@
       }
     },
     {
-      "parameters": {},
-      "id": "3f23ad86-955a-4d62-ac93-138493d4aab5",
-      "name": "Merge pending items",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  t.id AS entity_id,\n  'email_thread' AS entity_type,\n  t.client_id,\n  t.subject,\n  t.status AS current_status,\n  t.last_direction AS direction,\n  t.message_count,\n  t.last_message_at AS sent_at,\n  (SELECT string_agg(\n    em.direction || ': ' || COALESCE(LEFT(em.body_text, 400), em.snippet, ''),\n    E'\\n---\\n' ORDER BY em.sent_at\n  ) FROM email_messages em WHERE em.thread_id = t.id) AS body_text\nFROM email_threads t\nWHERE t.client_id IS NOT NULL\n  AND t.status != 'closed'\n  AND t.last_message_at < now() - interval '24 hours'\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = t.id\n      AND ai.entity_type = 'email_thread'\n      AND ai.analyzed_at > t.last_message_at\n  )\nORDER BY t.last_message_at DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "b231bd63-a371-450b-be7a-85986224e62b",
+      "name": "Fetch pending threads",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -240,
+        304
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "34f19c72-1633-4642-91c3-264b9b6c718a",
+      "name": "Merge all items",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        80,
-        -32
+        0,
+        128
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "98bef956-e795-4589-bcde-df05c3e1e0d5",
+      "id": "913ebcdc-2991-44cd-abcf-49e03042cbf4",
       "name": "Split In Batches (1×1)",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        304,
-        -32
+        224,
+        144
       ]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.item.json;\n\nconst subject = (item.subject ?? '').toLowerCase();\nconst body = item.body_text ?? '';\n\n// Filtrar correus automàtics que no aporten valor analitzable\nconst SKIP_PATTERNS = [\n  /^aceptad[oa]:/i,\n  /^rechazad[oa]:/i,\n  /^accepted:/i,\n  /^declined:/i,\n  /^tentative:/i,\n  /^invitation:/i,\n  /^invitaci[oó]n:/i,\n  /^updated invitation/i,\n  /^canceled event/i,\n  /^evento cancelado/i,\n  /^out of office/i,\n  /^fuera de (la )?oficina/i,\n  /^automatic reply/i,\n  /^respuesta autom[aá]tica/i,\n  /^undelivered mail/i,\n  /^delivery status/i,\n  /^mail delivery failed/i,\n  /^re:.*noreply/i,\n];\n\nconst shouldSkip = SKIP_PATTERNS.some(p => p.test(item.subject ?? ''));\nif (shouldSkip) return [];\n\n// Truncar body\nconst MAX_BODY_CHARS = 12000;\nconst bodyTrunc = body.substring(0, MAX_BODY_CHARS);\nconst wasTruncated = body.length > MAX_BODY_CHARS;\n\nconst sentAt = item.sent_at\n  ? new Date(item.sent_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })\n  : 'desconocida';\n\nconst prompt = `Analiza el siguiente contenido de comunicación empresarial.\nResponde EXCLUSIVAMENTE en JSON válido con esta estructura exacta, sin ningún texto adicional fuera del JSON:\n{\n  \"summary\": \"resumen breve en 1-2 frases del contenido\",\n  \"sentiment_label\": \"positive\" | \"neutral\" | \"negative\" | \"mixed\",\n  \"sentiment_score\": número entre -1.0 y 1.0,\n  \"complaint_flag\": true o false,\n  \"satisfaction_flag\": true o false,\n  \"needs_follow_up\": true o false,\n  \"urgency_score\": número entre 0.0 y 1.0,\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"risks\": [\"riesgo1\", \"riesgo2\"],\n  \"action_items\": [{\"text\": \"descripción de la acción\", \"priority\": \"low|medium|high|critical\"}]\n}\n\nTipo: ${item.entity_type === 'email_message' ? 'Email' : 'Transcripción de reunión'}\nAsunto: ${(item.subject ?? '').substring(0, 200)}\nDirección: ${item.direction}\nFecha: ${sentAt}${wasTruncated ? '\\n[Contenido truncado a los primeros 12.000 caracteres]' : ''}\n\nContenido:\n${bodyTrunc}`;\n\nreturn [{\n  json: {\n    ...item,\n    prompt,\n    body_truncated: wasTruncated\n  }\n}];\n"
+        "jsCode": "const item = $input.item.json;\nconst body = item.body_text ?? '';\n\nconst MAX_BODY_CHARS = 12000;\nconst bodyTrunc = body.substring(0, MAX_BODY_CHARS);\nconst wasTruncated = body.length > MAX_BODY_CHARS;\n\nconst sentAt = item.sent_at\n  ? new Date(item.sent_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })\n  : 'desconocida';\n\nlet prompt;\n\nif (item.entity_type === 'email_thread') {\n  // Thread analysis: determine if resolved + sentiment\n  prompt = `Analiza el siguiente hilo de correo electrónico empresarial completo.\nEl hilo tiene ${item.message_count ?? '?'} mensajes. El estado actual es \"${item.current_status || 'open'}\".\nLa última actividad fue el ${sentAt}.\n\nResponde EXCLUSIVAMENTE en JSON válido con esta estructura exacta, sin ningún texto adicional fuera del JSON:\n{\n  \"summary\": \"resumen breve del hilo en 1-2 frases\",\n  \"sentiment_label\": \"positive\" | \"neutral\" | \"negative\" | \"mixed\",\n  \"sentiment_score\": número entre -1.0 y 1.0,\n  \"resolved\": true si la conversación parece resuelta/cerrada, false si sigue abierta o pendiente,\n  \"recommended_status\": \"closed\" | \"waiting_client\" | \"waiting_team\" | \"open\",\n  \"complaint_flag\": true o false,\n  \"satisfaction_flag\": true o false,\n  \"needs_follow_up\": true o false,\n  \"urgency_score\": número entre 0.0 y 1.0,\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"risks\": [\"riesgo1\", \"riesgo2\"],\n  \"action_items\": [{\"text\": \"descripción de la acción\", \"priority\": \"low|medium|high|critical\"}]\n}\n\nCriterios para resolved=true:\n- Últimos mensajes son agradecimientos, confirmaciones, o \"OK\"\n- Se ha llegado a un acuerdo o se ha entregado lo solicitado\n- No hay preguntas pendientes sin responder\n\nCriterios para resolved=false:\n- Hay preguntas sin responder\n- Se espera una acción o entrega pendiente\n- La conversación se interrumpió sin conclusión\n\nAsunto: ${(item.subject ?? '').substring(0, 200)}\nÚltima dirección: ${item.direction}${wasTruncated ? '\\n[Contenido truncado]' : ''}\n\nConversación completa:\\n${bodyTrunc}`;\n\n} else {\n  // Email or transcript analysis\n  const tipo = item.entity_type === 'email_message' ? 'Email' : 'Transcripción de reunión';\n  prompt = `Analiza el siguiente contenido de comunicación empresarial.\nResponde EXCLUSIVAMENTE en JSON válido con esta estructura exacta, sin ningún texto adicional fuera del JSON:\n{\n  \"summary\": \"resumen breve en 1-2 frases del contenido\",\n  \"sentiment_label\": \"positive\" | \"neutral\" | \"negative\" | \"mixed\",\n  \"sentiment_score\": número entre -1.0 y 1.0,\n  \"complaint_flag\": true o false,\n  \"satisfaction_flag\": true o false,\n  \"needs_follow_up\": true o false,\n  \"urgency_score\": número entre 0.0 y 1.0,\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"risks\": [\"riesgo1\", \"riesgo2\"],\n  \"action_items\": [{\"text\": \"descripción de la acción\", \"priority\": \"low|medium|high|critical\"}]\n}\n\nTipo: ${tipo}\nAsunto: ${(item.subject ?? '').substring(0, 200)}\nDirección: ${item.direction}\nFecha: ${sentAt}${wasTruncated ? '\\n[Contenido truncado a los primeros 12.000 caracteres]' : ''}\n\nContenido:\\n${bodyTrunc}`;\n}\n\nreturn [{\n  json: {\n    ...item,\n    prompt,\n    body_truncated: wasTruncated\n  }\n}];"
       },
-      "id": "b60ce91e-2301-4997-924f-e4a506329d72",
+      "id": "e563b02d-b4ec-49fa-8606-e428d748a5b5",
       "name": "Build prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        544,
-        -16
+        448,
+        160
       ],
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const ctx      = $('Build prompt').item.json;\nconst aiOutput = $input.item.json;\n\n// Extract text — adapt to actual OpenAI response structure\nconst rawText = aiOutput?.output?.[0]?.content?.[0]?.text\n  ?? aiOutput?.message?.content\n  ?? aiOutput?.choices?.[0]?.message?.content\n  ?? '';\n\n// Parse and validate\nlet parsed;\ntry {\n  const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  console.error(`[AI Analysis] JSON parse failed for entity ${ctx.entity_id}: ${err.message}`);\n  return [];\n}\n\nconst VALID_SENTIMENTS = ['positive', 'neutral', 'negative', 'mixed'];\nconst VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];\n\nconst validated = {\n  summary:           typeof parsed.summary          === 'string'  ? parsed.summary.substring(0, 1000) : '',\n  sentiment_label:   VALID_SENTIMENTS.includes(parsed.sentiment_label) ? parsed.sentiment_label : 'neutral',\n  sentiment_score:   typeof parsed.sentiment_score  === 'number'  ? Math.max(-1, Math.min(1, parsed.sentiment_score)) : 0,\n  complaint_flag:    typeof parsed.complaint_flag   === 'boolean' ? parsed.complaint_flag    : false,\n  satisfaction_flag: typeof parsed.satisfaction_flag === 'boolean' ? parsed.satisfaction_flag : false,\n  needs_follow_up:   typeof parsed.needs_follow_up  === 'boolean' ? parsed.needs_follow_up   : false,\n  urgency_score:     typeof parsed.urgency_score    === 'number'  ? Math.max(0, Math.min(1, parsed.urgency_score)) : 0,\n  topics:            Array.isArray(parsed.topics)    ? parsed.topics.filter(t => typeof t === 'string').slice(0, 20) : [],\n  risks:             Array.isArray(parsed.risks)     ? parsed.risks.filter(r => typeof r === 'string').slice(0, 20)  : [],\n  action_items:      Array.isArray(parsed.action_items)\n    ? parsed.action_items\n        .filter(a => a && typeof a.text === 'string')\n        .map(a => ({\n          text:     a.text.substring(0, 500),\n          priority: VALID_PRIORITIES.includes(a.priority) ? a.priority : 'medium'\n        }))\n        .slice(0, 20)\n    : []\n};\n\nreturn [{\n  json: {\n    entity_id:   ctx.entity_id,\n    entity_type: ctx.entity_type,\n    client_id:   ctx.client_id,\n    subject:     ctx.subject,\n    ...validated,\n    raw_output: parsed,\n    is_high_risk: validated.complaint_flag || validated.urgency_score >= 0.8\n  }\n}];"
-      },
-      "id": "2e1dd392-206b-45aa-b84b-acaf096681ac",
-      "name": "Validate + parse response",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1296,
-        -16
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO ai_insights (\n  entity_type, entity_id, client_id, model_name,\n  summary, sentiment_label, sentiment_score,\n  urgency_score, complaint_flag, satisfaction_flag,\n  needs_follow_up, topics, risks, raw_output, analyzed_at\n)\nVALUES (\n  '{{ $json.entity_type }}'::public.analyzable_entity,\n  '{{ $json.entity_id }}',\n  '{{ $json.client_id }}',\n  'gpt-4',\n  '{{ ($json.summary || '').replace(/'/g, \"''\") }}',\n  '{{ $json.sentiment_label }}'::public.sentiment_label,\n  {{ $json.sentiment_score }},\n  {{ $json.urgency_score }},\n  {{ $json.complaint_flag }},\n  {{ $json.satisfaction_flag }},\n  {{ $json.needs_follow_up }},\n  '{{ JSON.stringify($json.topics) }}'::jsonb,\n  '{{ JSON.stringify($json.risks) }}'::jsonb,\n  '{{ JSON.stringify($json.raw_output).replace(/'/g, \"''\") }}'::jsonb,\n  now()\n)\nRETURNING id AS insight_id;",
-        "options": {}
-      },
-      "id": "010ee43f-7996-4497-aaa7-30eed99a0370",
-      "name": "Insert ai_insights",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        1520,
-        -16
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "3Kp5Kb17YoxCT3Ll",
-          "name": "Postgres Decada"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Expand action_items → one item per action, skipping if none\nconst insight    = $('Validate + parse response').item.json;\nconst insightRow = $input.item.json;\n\nif (!insight.action_items?.length) return [];\n\nreturn insight.action_items.map(a => ({\n  json: {\n    insight_id: insightRow.insight_id,\n    client_id:  insight.client_id,\n    text:       a.text,\n    priority:   a.priority\n  }\n}));\n"
-      },
-      "id": "ed99fb72-cd49-4e34-bd15-be0bc7f04dbb",
-      "name": "Expand action items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1744,
-        -112
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO action_items (\n  client_id, source_entity_type, source_entity_id,\n  title, details, status, priority\n)\nVALUES (\n  '{{ $json.client_id }}',\n  '{{ $('Validate + parse response').item.json.entity_type }}'::public.analyzable_entity,\n  '{{ $('Validate + parse response').item.json.entity_id }}',\n  '{{ ($json.text || '').replace(/'/g, \"''\") }}',\n  'Generat automàticament per IA',\n  'open'::public.action_status,\n  '{{ $json.priority }}'::public.action_priority\n);",
-        "options": {}
-      },
-      "id": "fd171bfe-0828-425c-bedb-412ea91d87a6",
-      "name": "Upsert action_items",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        1952,
-        -112
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "3Kp5Kb17YoxCT3Ll",
-          "name": "Postgres Decada"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": false,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "high-risk",
-              "leftValue": "={{ $('Validate + parse response').item.json.is_high_risk }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equal"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "f21fbdbd-20a4-47cb-980e-465e2af7d24a",
-      "name": "High risk?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1744,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT c.name AS client_name\nFROM clients c\nWHERE c.id = '{{ $('Validate + parse response').item.json.client_id }}'\nLIMIT 1;",
-        "options": {}
-      },
-      "id": "331d52a1-76e0-4470-b308-0bf4885f411d",
-      "name": "Fetch client name",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        1952,
-        32
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "3Kp5Kb17YoxCT3Ll",
-          "name": "Postgres Decada"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const insight     = $('Validate + parse response').item.json;\nconst clientRow   = $input.item.json;\n\nconst clientName  = clientRow?.client_name ?? 'Client desconegut';\nconst entityLabel = insight.entity_type === 'email_message' ? '📧 Email' : '📝 Transcript';\nconst flags       = [];\nif (insight.complaint_flag)       flags.push('⚠️ Queixa detectada');\nif (insight.urgency_score >= 0.8) flags.push(`🔴 Urgència: ${(insight.urgency_score * 100).toFixed(0)}%`);\nif (insight.needs_follow_up)      flags.push('🔁 Requereix seguiment');\n\nconst topicsStr = insight.topics?.length ? insight.topics.slice(0, 5).join(', ') : '—';\nconst risksStr  = insight.risks?.length  ? insight.risks.slice(0, 3).join(' | ')  : '—';\n\nconst slackText = [\n  `*🚨 Alerta d'alt risc — ${clientName}*`,\n  `${entityLabel} · Assumpte: _${(insight.subject ?? '').substring(0, 100)}_`,\n  '',\n  `*Resum:* ${insight.summary}`,\n  `*Indicadors:* ${flags.join(' · ')}`,\n  `*Temes:* ${topicsStr}`,\n  `*Riscos:* ${risksStr}`\n].join('\\n');\n\nreturn [{\n  json: {\n    slack_text:   slackText,\n    client_name:  clientName,\n    insight\n  }\n}];\n"
-      },
-      "id": "4a373b18-cc99-4117-85ca-8ccf2c2973ac",
-      "name": "Build alert message",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2176,
-        32
-      ]
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
-        "select": "user",
-        "user": {
-          "__rl": true,
-          "value": "U09RKRD7N76",
-          "mode": "list",
-          "cachedResultName": "pol"
-        },
-        "text": "={{ $json.slack_text }}",
-        "otherOptions": {
-          "mrkdwn": true
-        }
-      },
-      "id": "519bf531-af0b-40c5-9efb-a3e0bc056422",
-      "name": "Slack — Send alert",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.3,
-      "position": [
-        2400,
-        176
-      ],
-      "webhookId": "4e365bbb-4c33-4b66-9c24-f9132762f00a",
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "rlqgl4bMXXzpceLs",
-          "name": "Slack account 4"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// No-op: skip alert silently\nreturn [];\n"
-      },
-      "id": "7190f141-66d1-4b38-bf76-19699b0bda84",
-      "name": "Skip alert",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1952,
-        176
-      ]
     },
     {
       "parameters": {
@@ -299,15 +146,119 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.1,
       "position": [
-        960,
-        -16
+        624,
+        160
       ],
-      "id": "9d23e921-defc-45bd-804f-6b4edea179a3",
+      "id": "0ff748b2-300b-4a37-8556-65656c85f861",
       "name": "Message a model",
       "credentials": {
         "openAiApi": {
           "id": "5RfluXcVKiX3t8rk",
           "name": "OpenAiBlumbAccount"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx      = $('Build prompt').item.json;\nconst aiOutput = $input.item.json;\n\nconst rawText = aiOutput?.output?.[0]?.content?.[0]?.text\n  ?? aiOutput?.message?.content\n  ?? aiOutput?.choices?.[0]?.message?.content\n  ?? '';\n\nlet parsed;\ntry {\n  const jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) throw new Error('No JSON block found');\n  parsed = JSON.parse(jsonMatch[0]);\n} catch (err) {\n  console.error(`[AI] JSON parse failed for ${ctx.entity_id}: ${err.message}`);\n  return [];\n}\n\nconst VALID_SENTIMENTS = ['positive', 'neutral', 'negative', 'mixed'];\nconst VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];\nconst VALID_STATUSES = ['closed', 'waiting_client', 'waiting_team', 'open'];\n\nconst validated = {\n  summary:           typeof parsed.summary === 'string' ? parsed.summary.substring(0, 1000) : '',\n  sentiment_label:   VALID_SENTIMENTS.includes(parsed.sentiment_label) ? parsed.sentiment_label : 'neutral',\n  sentiment_score:   typeof parsed.sentiment_score === 'number' ? Math.max(-1, Math.min(1, parsed.sentiment_score)) : 0,\n  complaint_flag:    parsed.complaint_flag === true,\n  satisfaction_flag:  parsed.satisfaction_flag === true,\n  needs_follow_up:   parsed.needs_follow_up === true,\n  urgency_score:     typeof parsed.urgency_score === 'number' ? Math.max(0, Math.min(1, parsed.urgency_score)) : 0,\n  topics:            Array.isArray(parsed.topics) ? parsed.topics.filter(t => typeof t === 'string').slice(0, 20) : [],\n  risks:             Array.isArray(parsed.risks) ? parsed.risks.filter(r => typeof r === 'string').slice(0, 20) : [],\n  action_items:      Array.isArray(parsed.action_items)\n    ? parsed.action_items.filter(a => a?.text).map(a => ({ text: String(a.text).substring(0, 500), priority: VALID_PRIORITIES.includes(a.priority) ? a.priority : 'medium' })).slice(0, 20)\n    : []\n};\n\n// Thread-specific fields\nconst threadFields = ctx.entity_type === 'email_thread' ? {\n  resolved: parsed.resolved === true,\n  recommended_status: VALID_STATUSES.includes(parsed.recommended_status) ? parsed.recommended_status : null\n} : {};\n\nreturn [{\n  json: {\n    entity_id:   ctx.entity_id,\n    entity_type: ctx.entity_type,\n    client_id:   ctx.client_id,\n    subject:     ctx.subject,\n    ...validated,\n    ...threadFields,\n    raw_output: parsed,\n    is_high_risk: validated.complaint_flag || validated.urgency_score >= 0.8\n  }\n}];"
+      },
+      "id": "7cef5fbf-6871-47cb-9220-62207136c9ea",
+      "name": "Validate + parse response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_insights (\n  entity_type, entity_id, client_id, model_name,\n  summary, sentiment_label, sentiment_score,\n  urgency_score, complaint_flag, satisfaction_flag,\n  needs_follow_up, topics, risks, raw_output, analyzed_at\n)\nVALUES (\n  '{{ $json.entity_type }}'::public.analyzable_entity,\n  '{{ $json.entity_id }}',\n  '{{ $json.client_id }}',\n  'gpt-4',\n  '{{ ($json.summary || '').replace(/'/g, \"''\") }}',\n  '{{ $json.sentiment_label }}'::public.sentiment_label,\n  {{ $json.sentiment_score }},\n  {{ $json.urgency_score }},\n  {{ $json.complaint_flag }},\n  {{ $json.satisfaction_flag }},\n  {{ $json.needs_follow_up }},\n  '{{ JSON.stringify($json.topics) }}'::jsonb,\n  '{{ JSON.stringify($json.risks) }}'::jsonb,\n  '{{ JSON.stringify($json.raw_output).replace(/'/g, \"''\") }}'::jsonb,\n  now()\n)\nON CONFLICT (entity_type, entity_id)\nDO UPDATE SET\n  summary         = EXCLUDED.summary,\n  sentiment_label = EXCLUDED.sentiment_label,\n  sentiment_score = EXCLUDED.sentiment_score,\n  urgency_score   = EXCLUDED.urgency_score,\n  complaint_flag  = EXCLUDED.complaint_flag,\n  satisfaction_flag = EXCLUDED.satisfaction_flag,\n  needs_follow_up = EXCLUDED.needs_follow_up,\n  topics          = EXCLUDED.topics,\n  risks           = EXCLUDED.risks,\n  raw_output      = EXCLUDED.raw_output,\n  analyzed_at     = now()\nRETURNING id AS insight_id;",
+        "options": {}
+      },
+      "id": "290b6ae7-791e-4508-ac45-da59236e6c90",
+      "name": "Insert ai_insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1120,
+        160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const insight    = $('Validate + parse response').item.json;\nconst insightRow = $input.item.json;\n\nif (!insight.action_items?.length) return [];\n\nreturn insight.action_items.map(a => ({\n  json: {\n    insight_id: insightRow.insight_id,\n    client_id:  insight.client_id,\n    text:       a.text,\n    priority:   a.priority\n  }\n}));"
+      },
+      "id": "26cc699d-8135-4f04-a0ab-f396e355a13f",
+      "name": "Expand action items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        160
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO action_items (\n  client_id, source_entity_type, source_entity_id,\n  title, details, status, priority\n)\nVALUES (\n  '{{ $json.client_id }}',\n  '{{ $('Validate + parse response').item.json.entity_type }}'::public.analyzable_entity,\n  '{{ $('Validate + parse response').item.json.entity_id }}',\n  '{{ ($json.text || '').replace(/'/g, \"''\") }}',\n  'Generado automáticamente por IA',\n  'open'::public.action_status,\n  '{{ $json.priority }}'::public.action_priority\n);",
+        "options": {}
+      },
+      "id": "e37fbba4-a2bf-4e95-853f-9e7581fc0e47",
+      "name": "Upsert action_items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1680,
+        160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Only process thread entities — skip emails and transcripts\nconst insight = $('Validate + parse response').item.json;\nif (insight.entity_type !== 'email_thread') return [];\nif (!insight.recommended_status) return [];\n\nreturn [{\n  json: {\n    thread_id: insight.entity_id,\n    new_status: insight.recommended_status\n  }\n}];"
+      },
+      "id": "178ec78f-04d4-4683-a234-89315bafc16f",
+      "name": "Filter thread updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        160
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE email_threads\nSET status = '{{ $json.new_status }}'::public.thread_status\nWHERE id = '{{ $json.thread_id }}';",
+        "options": {}
+      },
+      "id": "0dff1ce7-a5cf-4bb7-926e-0d4053f6efb4",
+      "name": "Update thread status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2240,
+        176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "3Kp5Kb17YoxCT3Ll",
+          "name": "Postgres Decada"
         }
       }
     },
@@ -322,7 +273,7 @@
           },
           "conditions": [
             {
-              "id": "8f6de669-76cd-4744-b6b6-a3b86ceddf8a",
+              "id": "4846c289-c08a-42e4-b3a1-8ab1703db4a5",
               "leftValue": "={{ $json }}",
               "rightValue": "",
               "operator": {
@@ -339,11 +290,45 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        752,
-        -16
+        2032,
+        160
       ],
-      "id": "d2fc8ce4-150c-44b3-81ef-14788fe3bbd4",
+      "id": "3228657d-533d-4b02-a7aa-262b1a1b00f1",
       "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4846c289-c08a-42e4-b3a1-8ab1703db4a5",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1488,
+        160
+      ],
+      "id": "39e83160-ac87-42ad-b442-16074894f23e",
+      "name": "If1"
     }
   ],
   "connections": {
@@ -359,6 +344,11 @@
             "node": "Fetch pending transcripts",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Fetch pending threads",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -367,7 +357,7 @@
       "main": [
         [
           {
-            "node": "Merge pending items",
+            "node": "Merge all items",
             "type": "main",
             "index": 0
           }
@@ -378,14 +368,25 @@
       "main": [
         [
           {
-            "node": "Merge pending items",
+            "node": "Merge all items",
             "type": "main",
             "index": 1
           }
         ]
       ]
     },
-    "Merge pending items": {
+    "Fetch pending threads": {
+      "main": [
+        [
+          {
+            "node": "Merge all items",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge all items": {
       "main": [
         [
           {
@@ -412,7 +413,18 @@
       "main": [
         [
           {
-            "node": "If",
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Validate + parse response",
             "type": "main",
             "index": 0
           }
@@ -437,11 +449,6 @@
             "node": "Expand action items",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "High risk?",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -450,80 +457,40 @@
       "main": [
         [
           {
-            "node": "Upsert action_items",
+            "node": "If1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "High risk?": {
+    "Upsert action_items": {
       "main": [
         [
           {
-            "node": "Fetch client name",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Skip alert",
+            "node": "Filter thread updates",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch client name": {
+    "Filter thread updates": {
       "main": [
         [
           {
-            "node": "Build alert message",
+            "node": "If",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build alert message": {
-      "main": [
-        [
-          {
-            "node": "Slack — Send alert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Slack — Send alert": {
+    "Update thread status": {
       "main": [
         [
           {
             "node": "Split In Batches (1×1)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Skip alert": {
-      "main": [
-        [
-          {
-            "node": "Split In Batches (1×1)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Message a model": {
-      "main": [
-        [
-          {
-            "node": "Validate + parse response",
             "type": "main",
             "index": 0
           }
@@ -534,7 +501,25 @@
       "main": [
         [
           {
-            "node": "Message a model",
+            "node": "Update thread status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches (1×1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Upsert action_items",
             "type": "main",
             "index": 0
           }

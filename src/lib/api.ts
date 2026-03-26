@@ -137,7 +137,34 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
 export async function dismissClient(clientId: string, primaryDomain: string | null): Promise<void> {
   const supabase = getSupabaseClient();
 
-  // 1. Mark client as inactive
+  // 1. Dismiss any clients that were merged into this one
+  const { data: mergedClients } = await supabase
+    .from("clients")
+    .select("id, primary_domain")
+    .eq("status", "inactive")
+    .filter("metadata->>merged_into", "eq", clientId);
+
+  if (mergedClients?.length) {
+    for (const mc of mergedClients) {
+      // Clear merge metadata and keep as inactive (dismissed)
+      await supabase
+        .from("clients")
+        .update({ metadata: {}, notes: null })
+        .eq("id", mc.id);
+
+      // Add their domain to excluded_senders too
+      if (mc.primary_domain) {
+        await supabase
+          .from("excluded_senders")
+          .upsert(
+            { value: mc.primary_domain, reason: "dismissed" },
+            { onConflict: "value" },
+          );
+      }
+    }
+  }
+
+  // 2. Mark client as inactive
   const { error: updateError } = await supabase
     .from("clients")
     .update({ status: "inactive" })
@@ -145,7 +172,7 @@ export async function dismissClient(clientId: string, primaryDomain: string | nu
 
   if (updateError) throw updateError;
 
-  // 2. Add domain to excluded_senders so it won't be auto-created again
+  // 3. Add domain to excluded_senders so it won't be auto-created again
   if (primaryDomain) {
     const { error: excludeError } = await supabase
       .from("excluded_senders")
@@ -162,13 +189,15 @@ export async function fetchDismissedClients(): Promise<DismissedClient[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("id, name, primary_domain, updated_at")
+    .select("id, name, primary_domain, updated_at, metadata")
     .eq("status", "inactive")
-    .order("updated_at", { ascending: false })
-    .returns<DismissedClient[]>();
+    .order("updated_at", { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  // Exclude merged clients — they show on the target client's page instead
+  return (data ?? [])
+    .filter((c) => !(c.metadata as Record<string, unknown>)?.merged_into)
+    .map(({ metadata: _, ...rest }) => rest) as DismissedClient[];
 }
 
 export async function restoreClient(clientId: string): Promise<void> {
