@@ -33,7 +33,7 @@
         -240,
         -16
       ],
-      "alwaysOutputData": true,
+      "alwaysOutputData": false,
       "credentials": {
         "postgres": {
           "id": "3Kp5Kb17YoxCT3Ll",
@@ -55,7 +55,7 @@
         -240,
         144
       ],
-      "alwaysOutputData": true,
+      "alwaysOutputData": false,
       "credentials": {
         "postgres": {
           "id": "3Kp5Kb17YoxCT3Ll",
@@ -77,7 +77,7 @@
         -240,
         304
       ],
-      "alwaysOutputData": true,
+      "alwaysOutputData": false,
       "credentials": {
         "postgres": {
           "id": "3Kp5Kb17YoxCT3Ll",
