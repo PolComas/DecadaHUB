@@ -43,7 +43,7 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
     try {
       await resetPassword(email);
       setFeedback(
-        "Si el correu existeix, rebràs un enllaç per restablir la contrasenya. Comprova la safata d'entrada.",
+        "Si el correo existe, recibirás un enlace para restablecer la contraseña. Revisa la bandeja de entrada.",
       );
     } catch (error) {
       setErrorMessage(toMessage(error));
@@ -62,28 +62,28 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
 
         {view === "login" ? (
           <>
-            <h2 className="auth-title">Benvingut/da</h2>
+            <h2 className="auth-title">Bienvenido/a</h2>
             <p className="auth-copy">
-              Accedeix al hub intern de comunicació amb clients.
+              Accede al hub interno de comunicación con clientes.
             </p>
 
             {envMissing ? (
               <div className="callout error" style={{ marginTop: 20 }}>
                 <strong>Falta configurar Supabase.</strong>
                 <p>
-                  Revisa <code>VITE_SUPABASE_URL</code> i{" "}
-                  <code>VITE_SUPABASE_ANON_KEY</code> al fitxer <code>.env</code>.
+                  Revisa <code>VITE_SUPABASE_URL</code> y{" "}
+                  <code>VITE_SUPABASE_ANON_KEY</code> en el archivo <code>.env</code>.
                 </p>
               </div>
             ) : (
               <form className="auth-form" onSubmit={handleLogin}>
                 <div className="form-group">
-                  <label htmlFor="email">Email</label>
+                  <label htmlFor="email">Correo electrónico</label>
                   <input
                     autoComplete="email"
                     id="email"
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nom@empresa.com"
+                    placeholder="nombre@empresa.com"
                     required
                     type="email"
                     value={email}
@@ -91,20 +91,20 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
                 </div>
                 <div className="form-group">
                   <div className="label-row">
-                    <label htmlFor="password">Contrasenya</label>
+                    <label htmlFor="password">Contraseña</label>
                     <button
                       className="text-link"
                       onClick={() => switchView("forgot")}
                       type="button"
                     >
-                      Has oblidat la contrasenya?
+                      ¿Has olvidado la contraseña?
                     </button>
                   </div>
                   <input
                     autoComplete="current-password"
                     id="password"
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Introdueix la contrasenya"
+                    placeholder="Introduce la contraseña"
                     required
                     type="password"
                     value={password}
@@ -115,27 +115,27 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Accedint..." : "Accedir"}
+                  {isSubmitting ? "Accediendo..." : "Acceder"}
                 </button>
               </form>
             )}
           </>
         ) : (
           <>
-            <h2 className="auth-title">Restablir contrasenya</h2>
+            <h2 className="auth-title">Restablecer contraseña</h2>
             <p className="auth-copy">
-              Introdueix el teu email i t'enviarem un enllaç per crear una nova
-              contrasenya.
+              Introduce tu correo electrónico y te enviaremos un enlace para crear una nueva
+              contraseña.
             </p>
 
             <form className="auth-form" onSubmit={handleForgotPassword}>
               <div className="form-group">
-                <label htmlFor="reset-email">Email</label>
+                <label htmlFor="reset-email">Correo electrónico</label>
                 <input
                   autoComplete="email"
                   id="reset-email"
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nom@empresa.com"
+                  placeholder="nombre@empresa.com"
                   required
                   type="email"
                   value={email}
@@ -146,7 +146,7 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Enviant..." : "Enviar enllaç"}
+                {isSubmitting ? "Enviando..." : "Enviar enlace"}
               </button>
             </form>
 
@@ -155,7 +155,7 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
               onClick={() => switchView("login")}
               type="button"
             >
-              Tornar a l'inici de sessió
+              Volver al inicio de sesión
             </button>
           </>
         )}
@@ -179,13 +179,13 @@ function toMessage(error: unknown) {
   if (error instanceof Error) {
     const msg = error.message;
     if (msg.includes("Invalid login credentials")) {
-      return "Email o contrasenya incorrectes.";
+      return "Correo electrónico o contraseña incorrectos.";
     }
     if (msg.includes("Email not confirmed")) {
-      return "El teu email encara no ha estat confirmat.";
+      return "Tu correo electrónico aún no ha sido confirmado.";
     }
     return msg;
   }
 
-  return "S'ha produït un error inesperat.";
+  return "Se ha producido un error inesperado.";
 }

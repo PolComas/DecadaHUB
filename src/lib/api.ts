@@ -273,7 +273,7 @@ export async function mergeClients(sourceId: string, targetId: string): Promise<
     .from("clients")
     .update({
       status: "inactive" as const,
-      notes: `Fusionat amb client target. ID original: ${sourceId}`,
+      notes: `Fusionado con cliente de destino. ID original: ${sourceId}`,
       metadata: {
         merged_into: targetId,
         merged_at: new Date().toISOString(),
@@ -463,7 +463,7 @@ export async function unmergeClient(sourceId: string): Promise<void> {
   if (readError) throw readError;
 
   const targetId = (source?.metadata as Record<string, unknown>)?.merged_into as string | undefined;
-  if (!targetId) throw new Error("Aquest client no està fusionat.");
+  if (!targetId) throw new Error("Este cliente no está fusionado.");
 
   // 2. Find which identifiers belong to the source client
   // (they were moved to target during merge)

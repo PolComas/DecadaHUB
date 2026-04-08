@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       async signIn(email: string, password: string) {
         if (!supabase) {
-          throw new Error("Supabase no està configurat al fitxer .env.");
+          throw new Error("Supabase no está configurado en el archivo .env.");
         }
 
         const { error } = await supabase.auth.signInWithPassword({
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async resetPassword(email: string) {
         if (!supabase) {
-          throw new Error("Supabase no està configurat al fitxer .env.");
+          throw new Error("Supabase no está configurado en el archivo .env.");
         }
 
         const redirectTo = `${window.location.origin}/login`;
@@ -108,7 +108,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth s'ha d'usar dins d'AuthProvider.");
+    throw new Error("useAuth debe usarse dentro de AuthProvider.");
   }
 
   return context;

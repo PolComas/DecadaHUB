@@ -9,7 +9,7 @@ import {
   mergeClients,
   unmergeClient,
 } from "../lib/api";
-import { directionLabel, formatDateTime, formatHours, statusLabel } from "../lib/formatters";
+import { directionLabel, formatDateTime, formatHours, priorityLabel, statusLabel } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
 import {
   ActivityCallout,
@@ -32,12 +32,12 @@ type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "m
 
 const TAB_CONFIG: { key: DetailTab; label: string }[] = [
   { key: "timeline", label: "Timeline" },
-  { key: "emails", label: "Emails" },
-  { key: "insights", label: "Insights" },
-  { key: "actions", label: "Accions" },
-  { key: "threads", label: "Threads" },
-  { key: "meetings", label: "Reunions" },
-  { key: "transcripts", label: "Transcripts" },
+  { key: "emails", label: "Correos" },
+  { key: "insights", label: "Análisis" },
+  { key: "actions", label: "Acciones" },
+  { key: "threads", label: "Hilos" },
+  { key: "meetings", label: "Reuniones" },
+  { key: "transcripts", label: "Transcripciones" },
 ];
 
 function tabCount(tab: DetailTab, detail: ClientDetail | null): number {
@@ -117,7 +117,7 @@ export default function ClientPage() {
 
   async function handleDismiss() {
     if (!clientId || !client) return;
-    if (!window.confirm(`Descartar "${client.client_name}"? El domini s'afegirà a la llista d'exclusions.`)) return;
+    if (!window.confirm(`¿Descartar "${client.client_name}"? El dominio se añadirá a la lista de exclusiones.`)) return;
     setIsDismissing(true);
     try {
       await dismissClient(clientId, client.primary_domain);
@@ -146,7 +146,7 @@ export default function ClientPage() {
 
   async function handleMerge(targetId: string, targetName: string) {
     if (!clientId || !client) return;
-    if (!window.confirm(`Fusionar "${client.client_name}" dins de "${targetName}"? Tots els correus, reunions i dades es mouran al client destí.`)) return;
+    if (!window.confirm(`¿Fusionar "${client.client_name}" con "${targetName}"? Todos los correos, reuniones y datos se moverán al cliente de destino.`)) return;
     setIsMerging(true);
     try {
       await mergeClients(clientId, targetId);
@@ -211,7 +211,7 @@ export default function ClientPage() {
   }
 
   async function handleUnmerge(sourceId: string, sourceName: string) {
-    if (!window.confirm(`Desfusionar "${sourceName}"? El client es restaurarà com a actiu. Les dades històriques es mantindran en aquest client.`)) return;
+    if (!window.confirm(`¿Separar "${sourceName}"? El cliente se restaurará como activo. Los datos históricos se mantendrán en este cliente.`)) return;
     try {
       await unmergeClient(sourceId);
       await refreshDashboard();
@@ -230,21 +230,21 @@ export default function ClientPage() {
   const attentionCallout = useMemo(() => {
     if (!client) return null;
     if (client.overdue_actions > 0) {
-      return { title: "Accions vençudes", body: `${client.overdue_actions} accions fora de termini que poden impactar la percepció del client.`, tone: "warning" as const };
+      return { title: "Acciones vencidas", body: `${client.overdue_actions} acciones fuera de plazo que pueden impactar en la percepción del cliente.`, tone: "warning" as const };
     }
     if (client.stalled_threads_gt_72h > 0) {
-      return { title: "Fils estancats", body: `${client.stalled_threads_gt_72h} fils porten més de 72h sense avançar.`, tone: "warning" as const };
+      return { title: "Hilos estancados", body: `${client.stalled_threads_gt_72h} hilos llevan más de 72 h sin avanzar.`, tone: "warning" as const };
     }
     if (client.negative_signals_30d > 0) {
-      return { title: "Senyals a seguir", body: `S'han detectat ${client.negative_signals_30d} senyals negatius els últims 30 dies.`, tone: "default" as const };
+      return { title: "Señales a seguir", body: `Se han detectado ${client.negative_signals_30d} señales negativas en los últimos 30 días.`, tone: "default" as const };
     }
-    return { title: "Relació estable", body: "No hi ha indicadors forts de risc immediat.", tone: "default" as const };
+    return { title: "Relación estable", body: "No hay indicadores fuertes de riesgo inmediato.", tone: "default" as const };
   }, [client]);
 
   if (!clientId) {
     return (
       <section className="card">
-        <EmptyState message="L'identificador del client no és vàlid." title="Client no trobat" />
+        <EmptyState message="El identificador del cliente no es válido." title="Cliente no encontrado" />
       </section>
     );
   }
@@ -252,7 +252,7 @@ export default function ClientPage() {
   if (!client && dashboard) {
     return (
       <section className="card">
-        <EmptyState message="Aquest client no existeix a la cartera carregada." title="Client no trobat" />
+        <EmptyState message="Este cliente no existe en la cartera cargada." title="Cliente no encontrado" />
       </section>
     );
   }
@@ -265,26 +265,26 @@ export default function ClientPage() {
           <div className="detail-breadcrumbs">
             <Link className="topbar-link" to="/">Dashboard</Link>
             <span>/</span>
-            <span>{client?.client_name ?? "Client"}</span>
+            <span>{client?.client_name ?? "Cliente"}</span>
           </div>
           <div className="detail-title-row">
             <div>
-              <h2 className="detail-title">{client?.client_name ?? "Carregant..."}</h2>
+              <h2 className="detail-title">{client?.client_name ?? "Cargando..."}</h2>
             </div>
             {client ? <RiskPill score={client.risk_score_heuristic} /> : null}
           </div>
           <p className="hero-text">
-            {client?.notes ?? "Vista detallada del compte amb context operatiu, timeline i seguiment qualitatiu."}
+            {client?.notes ?? "Vista detallada de la cuenta con contexto operativo, cronología y seguimiento cualitativo."}
           </p>
         </div>
         <div className="detail-side-meta">
-          <div className="session-chip">{client?.owner_name ?? "Sense owner"}</div>
-          <div className="session-chip muted">{client ? `${client.meetings_30d} reunions / 30d` : "—"}</div>
+          <div className="session-chip">{client?.owner_name ?? "Sin responsable"}</div>
+          <div className="session-chip muted">{client ? `${client.meetings_30d} reuniones / 30d` : "—"}</div>
           {client ? (
             <div className="detail-actions">
               <button className="ghost-button" onClick={() => void openMergeDialog()} type="button">Fusionar</button>
               <button className="ghost-button danger" disabled={isDismissing} onClick={() => void handleDismiss()} type="button">
-                {isDismissing ? "Descartant..." : "Descartar"}
+                {isDismissing ? "Descartando..." : "Descartar"}
               </button>
             </div>
           ) : null}
@@ -293,18 +293,18 @@ export default function ClientPage() {
 
       {/* KPIs */}
       <section className="stats-grid detail-stats">
-        <FocusMetric helper="Mitjana en hores laborables" label="Resposta equip" value={client ? formatHours(client.avg_team_response_hours_30d) : "—"} />
-        <FocusMetric helper="Temps fins a qualsevol resposta" label="Resposta client" value={client ? formatHours(client.avg_client_response_hours_30d) : "—"} />
-        <FocusMetric helper="Conversa bloquejada >72h" label="Fils estancats" value={client ? String(client.stalled_threads_gt_72h) : "—"} />
-        <FocusMetric helper="IA últims 30 dies" label="Senyals negatius" value={client ? String(client.negative_signals_30d) : "—"} />
+        <FocusMetric helper="Media en horas laborables" label="Respuesta equipo" value={client ? formatHours(client.avg_team_response_hours_30d) : "—"} />
+        <FocusMetric helper="Tiempo hasta cualquier respuesta" label="Respuesta cliente" value={client ? formatHours(client.avg_client_response_hours_30d) : "—"} />
+        <FocusMetric helper="Conversación bloqueada >72 h" label="Hilos estancados" value={client ? String(client.stalled_threads_gt_72h) : "—"} />
+        <FocusMetric helper="IA últimos 30 días" label="Señales negativas" value={client ? String(client.negative_signals_30d) : "—"} />
       </section>
 
       {/* Attention callouts */}
       <section className="two-up two-up-wide">
         {attentionCallout ? <ActivityCallout body={attentionCallout.body} title={attentionCallout.title} tone={attentionCallout.tone} /> : null}
         <ActivityCallout
-          body={client ? `${client.emails_sent_30d} enviats, ${client.emails_received_30d} rebuts, ${client.open_actions} accions obertes.` : "Sense context."}
-          title="Foto ràpida"
+          body={client ? `${client.emails_sent_30d} enviados, ${client.emails_received_30d} recibidos, ${client.open_actions} acciones abiertas.` : "Sin contexto."}
+          title="Resumen rápido"
         />
       </section>
 
@@ -312,16 +312,16 @@ export default function ClientPage() {
       {detail?.mergedClients && detail.mergedClients.length > 0 ? (
         <section className="merged-section">
           <button className="merged-section-toggle" onClick={() => setMergedExpanded((v) => !v)} type="button">
-            <h4>{mergedExpanded ? "▾" : "▸"} Clients fusionats ({detail.mergedClients.length})</h4>
+            <h4>{mergedExpanded ? "▾" : "▸"} Clientes fusionados ({detail.mergedClients.length})</h4>
           </button>
           {mergedExpanded && detail.mergedClients.map((mc) => (
             <div className="merged-item" key={mc.id}>
               <div className="merged-item-info">
                 <strong>{mc.name}</strong>
-                <span>{mc.primary_domain ?? "Sense domini"}{mc.merged_at ? ` · Fusionat el ${formatDateTime(mc.merged_at)}` : ""}</span>
+                <span>{mc.primary_domain ?? "Sin dominio"}{mc.merged_at ? ` · Fusionado el ${formatDateTime(mc.merged_at)}` : ""}</span>
               </div>
               <button className="unmerge-btn" onClick={() => void handleUnmerge(mc.id, mc.name)} type="button">
-                Desfusionar
+                Separar
               </button>
             </div>
           ))}
@@ -330,7 +330,7 @@ export default function ClientPage() {
 
       {detailError ? (
         <section className="callout error">
-          <strong>No s'ha pogut carregar la fitxa del client.</strong>
+          <strong>No se ha podido cargar la ficha del cliente.</strong>
           <p>{detailError}</p>
         </section>
       ) : null}
@@ -350,12 +350,12 @@ export default function ClientPage() {
         {activeTab === "timeline" && (
           <>
             <div className="section-header">
-              <h3>Activitat recent</h3>
+              <h3>Actividad reciente</h3>
               <CountChip>{detail?.timeline.length ?? 0}</CountChip>
             </div>
             {isLoading ? <SkeletonTimeline /> : null}
             {!isLoading && !detail?.timeline.length ? (
-              <EmptyState message="Quan hi hagi correus, reunions o transcripts, apareixeran aquí." title="Sense activitat" />
+              <EmptyState message="Cuando haya correos, reuniones o transcripciones, aparecerán aquí." title="Sin actividad" />
             ) : null}
             {!isLoading && detail?.timeline.length ? (
               <div className="timeline">
@@ -370,7 +370,7 @@ export default function ClientPage() {
         {activeTab === "emails" && (
           <>
             <div className="section-header">
-              <h3>Últims missatges</h3>
+              <h3>Últimos mensajes</h3>
               <CountChip>{detail?.messages.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -381,18 +381,18 @@ export default function ClientPage() {
                   <div className="list-card-wrapper" key={message.id}>
                     <div className="list-card" onClick={() => void handleOpenEmail(message.id)}>
                       <div className="list-title-line">
-                        <strong>{message.subject ?? "Sense assumpte"}</strong>
+                        <strong>{message.subject ?? "Sin asunto"}</strong>
                         <span className={`thread-chip ${message.direction === "client_to_team" ? "client_to_team" : "team_to_client"}`}>
                           {directionLabel(message.direction)}
                         </span>
                       </div>
-                      <p>{message.snippet ?? "Sense snippet disponible."}</p>
+                      <p>{message.snippet ?? "Sin fragmento disponible."}</p>
                       <div className="list-footer email-footer">
                         <span>{formatDateTime(message.sent_at)}</span>
                         <button
                           className="delete-btn"
-                          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: message.id, subject: message.subject ?? "Sense assumpte" }); }}
-                          title="Eliminar correu"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: message.id, subject: message.subject ?? "Sin asunto" }); }}
+                          title="Eliminar correo"
                           type="button"
                         >
                           🗑 Eliminar
@@ -403,7 +403,7 @@ export default function ClientPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState message="Quan hi hagi emails vinculats, es veuran aquí." title="Sense missatges" />
+              <EmptyState message="Cuando haya correos vinculados, se verán aquí." title="Sin mensajes" />
             )}
           </>
         )}
@@ -411,7 +411,7 @@ export default function ClientPage() {
         {activeTab === "insights" && (
           <>
             <div className="section-header">
-              <h3>Lectura qualitativa</h3>
+              <h3>Lectura cualitativa</h3>
               <CountChip>{detail?.insights.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -423,7 +423,7 @@ export default function ClientPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState message="Quan la IA processi el contingut, apareixerà aquí." title="Sense insights" />
+              <EmptyState message="Cuando la IA procese el contenido, aparecerá aquí." title="Sin análisis" />
             )}
           </>
         )}
@@ -431,7 +431,7 @@ export default function ClientPage() {
         {activeTab === "actions" && (
           <>
             <div className="section-header">
-              <h3>Accions pendents</h3>
+              <h3>Acciones pendientes</h3>
               <CountChip>{detail?.actions.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -444,9 +444,9 @@ export default function ClientPage() {
                       <strong>{action.title}</strong>
                       <span className={`priority-dot ${action.priority}`} />
                     </div>
-                    <p>{action.details ?? "Sense detall."}</p>
+                    <p>{action.details ?? "Sin detalle."}</p>
                     <div className="list-footer">
-                      <span>{action.priority}</span>
+                      <span>{priorityLabel(action.priority)}</span>
                       <span>{statusLabel(action.status)}</span>
                       <span>{formatDateTime(action.due_at)}</span>
                     </div>
@@ -454,7 +454,7 @@ export default function ClientPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState message="No hi ha accions obertes." title="Sense accions" />
+              <EmptyState message="No hay acciones abiertas." title="Sin acciones" />
             )}
           </>
         )}
@@ -462,7 +462,7 @@ export default function ClientPage() {
         {activeTab === "threads" && (
           <>
             <div className="section-header">
-              <h3>Fils de correu</h3>
+              <h3>Hilos de correo</h3>
               <CountChip>{detail?.threads.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -473,22 +473,22 @@ export default function ClientPage() {
                   <div
                     className="list-card"
                     key={thread.id}
-                    onClick={() => void handleOpenThread(thread.id, thread.subject ?? "Sense assumpte")}
+                    onClick={() => void handleOpenThread(thread.id, thread.subject ?? "Sin asunto")}
                     style={{ cursor: "pointer" }}
                   >
                     <div className="list-title-line">
-                      <strong>{thread.subject ?? "Sense assumpte"}</strong>
+                      <strong>{thread.subject ?? "Sin asunto"}</strong>
                       <span className={`thread-chip ${thread.status}`}>{statusLabel(thread.status)}</span>
                     </div>
                     <div className="list-footer">
-                      <span>{thread.message_count} missatges</span>
+                      <span>{thread.message_count} mensajes</span>
                       <span>{formatDateTime(thread.last_message_at)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <EmptyState message="No hi ha fils disponibles." title="Sense threads" />
+              <EmptyState message="No hay hilos disponibles." title="Sin hilos" />
             )}
           </>
         )}
@@ -496,7 +496,7 @@ export default function ClientPage() {
         {activeTab === "meetings" && (
           <>
             <div className="section-header">
-              <h3>Reunions recents</h3>
+              <h3>Reuniones recientes</h3>
               <CountChip>{detail?.meetings.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -506,17 +506,17 @@ export default function ClientPage() {
                 {detail.meetings.map((meeting) => (
                   <div className="list-card" key={meeting.id}>
                     <strong>{meeting.title}</strong>
-                    <p>{meeting.description ?? "Sense descripció."}</p>
+                    <p>{meeting.description ?? "Sin descripción."}</p>
                     <div className="list-footer">
                       <span>{formatDateTime(meeting.start_at)}</span>
                       <span>{durationMinutes(meeting.start_at, meeting.end_at)}</span>
-                      <span>{meeting.status}</span>
+                      <span>{statusLabel(meeting.status)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <EmptyState message="No hi ha reunions registrades." title="Sense reunions" />
+              <EmptyState message="No hay reuniones registradas." title="Sin reuniones" />
             )}
           </>
         )}
@@ -524,7 +524,7 @@ export default function ClientPage() {
         {activeTab === "transcripts" && (
           <>
             <div className="section-header">
-              <h3>Transcripcions</h3>
+              <h3>Transcripciones</h3>
               <CountChip>{detail?.transcripts.length ?? 0}</CountChip>
             </div>
             {isLoading ? (
@@ -533,18 +533,18 @@ export default function ClientPage() {
               <div className="stack-list">
                 {detail.transcripts.map((transcript) => (
                   <a className="list-card link-card" href={transcript.document_url ?? undefined} key={transcript.id} rel="noreferrer" target="_blank">
-                    <strong>{transcript.file_name ?? "Transcript"}</strong>
+                    <strong>{transcript.file_name ?? "Transcripción"}</strong>
                     <p>{transcript.content_text.slice(0, 160)}...</p>
                     <div className="list-footer">
                       <span>{formatDateTime(transcript.transcript_at)}</span>
                       <span>{transcript.language_code ?? "—"}</span>
-                      <span>{transcript.document_url ? "Obrir doc" : "Sense enllaç"}</span>
+                      <span>{transcript.document_url ? "Abrir documento" : "Sin enlace"}</span>
                     </div>
                   </a>
                 ))}
               </div>
             ) : (
-              <EmptyState message="No hi ha transcripts disponibles." title="Sense transcripts" />
+              <EmptyState message="No hay transcripciones disponibles." title="Sin transcripciones" />
             )}
           </>
         )}
@@ -555,19 +555,19 @@ export default function ClientPage() {
         <div className="dialog-backdrop" onClick={() => setShowMergeDialog(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-header">
-              <h3>Fusionar client</h3>
+              <h3>Fusionar cliente</h3>
               <button className="dialog-close" onClick={() => setShowMergeDialog(false)} type="button">&times;</button>
             </div>
             <p className="dialog-description">
-              Selecciona el client destí. Tots els correus, reunions, insights i accions de
-              <strong> {client?.client_name}</strong> es mouran al client seleccionat.
+              Selecciona el cliente de destino. Todos los correos, reuniones, análisis y acciones de
+              <strong> {client?.client_name}</strong> se moverán al cliente seleccionado.
             </p>
-            <input className="dialog-search" placeholder="Cercar client destí..." value={mergeSearch} onChange={(e) => setMergeSearch(e.target.value)} autoFocus />
+            <input className="dialog-search" placeholder="Buscar cliente de destino..." value={mergeSearch} onChange={(e) => setMergeSearch(e.target.value)} autoFocus />
             <div className="dialog-list">
               {isMergeLoading ? (
-                <div className="dialog-loading">Carregant clients...</div>
+                <div className="dialog-loading">Cargando clientes...</div>
               ) : filteredMergeCandidates.length === 0 ? (
-                <div className="dialog-empty">Cap client trobat.</div>
+                <div className="dialog-empty">No se ha encontrado ningún cliente.</div>
               ) : (
                 filteredMergeCandidates.map((candidate) => (
                   <button className="dialog-item" disabled={isMerging} key={candidate.id} onClick={() => void handleMerge(candidate.id, candidate.name)} type="button">
@@ -589,7 +589,7 @@ export default function ClientPage() {
         <div className="dialog-backdrop" onClick={() => { setEmailDetail(null); setEmailDetailLoading(false); }}>
           <div className="dialog wide" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-header">
-              <h3>{emailDetail?.subject ?? "Carregant..."}</h3>
+              <h3>{emailDetail?.subject ?? "Cargando..."}</h3>
               <button className="dialog-close" onClick={() => { setEmailDetail(null); setEmailDetailLoading(false); }} type="button">&times;</button>
             </div>
             <div className="dialog-body">
@@ -603,7 +603,7 @@ export default function ClientPage() {
                     <span>{formatDateTime(emailDetail.sent_at)}</span>
                   </div>
                   <div className="email-body-text">
-                    {emailDetail.body_text || emailDetail.snippet || "Sense contingut."}
+                    {emailDetail.body_text || emailDetail.snippet || "Sin contenido."}
                   </div>
                 </>
               ) : null}
@@ -627,7 +627,7 @@ export default function ClientPage() {
                 threadMessages.map((msg) => (
                   <div className="thread-message" key={msg.id}>
                     <div className="thread-message-head">
-                      <strong>{msg.sender_email ?? "Desconegut"}</strong>
+                      <strong>{msg.sender_email ?? "Desconocido"}</strong>
                       <span className={`thread-chip ${msg.direction === "client_to_team" ? "client_to_team" : "team_to_client"}`}>
                         {directionLabel(msg.direction)}
                       </span>
@@ -636,12 +636,12 @@ export default function ClientPage() {
                       <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{formatDateTime(msg.sent_at)}</span>
                     </div>
                     <div className="thread-message-body">
-                      {msg.body_text || msg.snippet || "Sense contingut."}
+                      {msg.body_text || msg.snippet || "Sin contenido."}
                     </div>
                   </div>
                 ))
               ) : (
-                <EmptyState message="No s'han trobat missatges en aquest fil." title="Fil buit" />
+                <EmptyState message="No se han encontrado mensajes en este hilo." title="Hilo vacío" />
               )}
             </div>
           </div>
@@ -653,15 +653,15 @@ export default function ClientPage() {
         <div className="dialog-backdrop" onClick={() => setDeleteTarget(null)}>
           <div className="dialog confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-header">
-              <h3>Eliminar correu</h3>
+              <h3>Eliminar correo</h3>
               <button className="dialog-close" onClick={() => setDeleteTarget(null)} type="button">&times;</button>
             </div>
             <div className="dialog-body">
-              <p>Segur que vols eliminar el correu <strong>"{deleteTarget.subject}"</strong>? Aquesta acció no es pot desfer.</p>
+              <p>¿Seguro que quieres eliminar el correo <strong>"{deleteTarget.subject}"</strong>? Esta acción no se puede deshacer.</p>
               <div className="confirm-actions">
-                <button className="confirm-cancel" onClick={() => setDeleteTarget(null)} type="button">Cancel·lar</button>
+                <button className="confirm-cancel" onClick={() => setDeleteTarget(null)} type="button">Cancelar</button>
                 <button className="confirm-danger" disabled={isDeleting} onClick={() => void handleDeleteConfirm()} type="button">
-                  {isDeleting ? "Eliminant..." : "Eliminar"}
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
                 </button>
               </div>
             </div>
@@ -676,5 +676,5 @@ function toMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
-  return "S'ha produït un error inesperat.";
+  return "Se ha producido un error inesperado.";
 }

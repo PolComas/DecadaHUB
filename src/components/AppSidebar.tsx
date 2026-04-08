@@ -39,7 +39,7 @@ export default function AppSidebar({
             <div className="brand-mark">D</div>
             <div>
               <h1>DecadaHUB</h1>
-              <p style={{ fontSize: 11, color: "var(--sidebar-text)", marginTop: 1 }}>Client Hub</p>
+              <p style={{ fontSize: 11, color: "var(--sidebar-text)", marginTop: 1 }}>Hub de clientes</p>
             </div>
           </NavLink>
         </div>
@@ -47,7 +47,7 @@ export default function AppSidebar({
         {dashboard && dashboard.mailboxes.length > 0 && (
           <div className="sidebar-section">
             <div className="sidebar-section-head">
-              <span>Comptes</span>
+              <span>Cuentas</span>
               <span>{dashboard.mailboxes.length}</span>
             </div>
 
@@ -74,11 +74,11 @@ export default function AppSidebar({
 
         <div className="sidebar-section">
           <label className="search-label" htmlFor="client-search">
-            Cercar client
+            Buscar cliente
           </label>
           <input
             id="client-search"
-            placeholder="Nom, owner o context..."
+            placeholder="Nombre, responsable o contexto..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
           />
@@ -86,7 +86,7 @@ export default function AppSidebar({
 
         <div className="sidebar-section client-section">
           <div className="sidebar-section-head">
-            <span>Clients</span>
+            <span>Clientes</span>
             <span>{clients.length}</span>
           </div>
 
@@ -100,7 +100,7 @@ export default function AppSidebar({
 
           {!isBooting && clients.length === 0 && (
             <p style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "8px 4px" }}>
-              Cap client trobat.
+              No se ha encontrado ningún cliente.
             </p>
           )}
 
@@ -122,12 +122,12 @@ export default function AppSidebar({
                       <strong>{client.client_name}</strong>
                       <RiskPill score={client.risk_score_heuristic} />
                     </div>
-                    <p>{client.owner_name ?? "Sense owner"}</p>
+                    <p>{client.owner_name ?? "Sin responsable"}</p>
                   </div>
                 </div>
                 <div className="client-row-metrics">
-                  <span>{client.overdue_actions} vençudes</span>
-                  <span>{client.stalled_threads_gt_72h} parats</span>
+                  <span>{client.overdue_actions} vencidas</span>
+                  <span>{client.stalled_threads_gt_72h} estancados</span>
                 </div>
               </NavLink>
             ))}
@@ -135,7 +135,7 @@ export default function AppSidebar({
 
         <div className="sidebar-footer">
           <NavLink className="sidebar-footer-link" onClick={onClose} to="/dismissed">
-            Clients descartats
+            Clientes descartados
           </NavLink>
         </div>
       </aside>

@@ -18,7 +18,7 @@ export const supabase = hasSupabaseEnv
 export function getSupabaseClient() {
   if (!supabase) {
     throw new Error(
-      "Falten VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Revisa el fitxer .env.",
+      "Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Revisa el archivo .env.",
     );
   }
 

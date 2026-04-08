@@ -40,7 +40,7 @@ export function MetricCard({
 export function RiskPill({ score }: { score: number }) {
   const tone = riskTone(score);
   const label =
-    tone === "critical" ? "Alt risc" : tone === "warning" ? "Risc mitjà" : "OK";
+    tone === "critical" ? "Riesgo alto" : tone === "warning" ? "Riesgo medio" : "OK";
 
   return <span className={`risk-pill ${tone}`}>{label}</span>;
 }
@@ -99,7 +99,7 @@ export function TimelineRow({ event }: { event: TimelineEvent }) {
           <strong>{event.title}</strong>
           <span>{timelineLabel(event.event_type)}</span>
         </div>
-        <p>{event.preview || "Sense resum disponible."}</p>
+        <p>{event.preview || "Sin resumen disponible."}</p>
         <div className="timeline-meta">
           <span>{formatDateTime(event.event_at)}</span>
         </div>
@@ -117,18 +117,18 @@ export function InsightCard({ insight }: { insight: AiInsight }) {
       <div className="insight-head">
         <div>
           <CountChip>{sentimentLabel(insight.sentiment_label)}</CountChip>
-          <h4>{insight.summary ?? "Sense resum generat"}</h4>
+          <h4>{insight.summary ?? "Sin resumen generado"}</h4>
         </div>
         <div className="insight-scores">
-          <span>Urgència {formatScore(insight.urgency_score)}</span>
-          <span>To {formatScore(insight.sentiment_score)}</span>
+          <span>Urgencia {formatScore(insight.urgency_score)}</span>
+          <span>Tono {formatScore(insight.sentiment_score)}</span>
         </div>
       </div>
 
       <div className="chip-row">
-        {insight.complaint_flag ? <span className="chip complaint">Queixa</span> : null}
-        {insight.satisfaction_flag ? <span className="chip satisfaction">Satisfacció</span> : null}
-        {insight.needs_follow_up ? <span className="chip follow-up">Follow-up</span> : null}
+        {insight.complaint_flag ? <span className="chip complaint">Queja</span> : null}
+        {insight.satisfaction_flag ? <span className="chip satisfaction">Satisfacción</span> : null}
+        {insight.needs_follow_up ? <span className="chip follow-up">Seguimiento</span> : null}
         {topics.slice(0, 3).map((topic) => (
           <span className="chip topic" key={String(topic)}>
             {String(topic)}
@@ -153,14 +153,14 @@ export function RecentMessageCard({ message }: { message: EmailMessage }) {
   return (
     <div className="list-card">
       <div className="list-title-line">
-        <strong>{message.subject ?? "Sense assumpte"}</strong>
+        <strong>{message.subject ?? "Sin asunto"}</strong>
         <span
           className={`thread-chip ${message.direction === "client_to_team" ? "client_to_team" : "team_to_client"}`}
         >
           {directionLabel(message.direction)}
         </span>
       </div>
-      <p>{message.snippet ?? "Sense snippet disponible."}</p>
+      <p>{message.snippet ?? "Sin fragmento disponible."}</p>
       <div className="list-footer">
         <span>{formatDateTime(message.sent_at)}</span>
       </div>
@@ -177,7 +177,7 @@ export function ClientListRow({ client }: { client: ClientOverview }) {
         </div>
         <div>
           <strong>{client.client_name}</strong>
-          <p>{client.owner_name ?? "Sense owner"}</p>
+          <p>{client.owner_name ?? "Sin responsable"}</p>
         </div>
       </div>
       <div className="portfolio-cell">
@@ -231,7 +231,7 @@ function formatScore(score: number | null) {
     return "—";
   }
 
-  return new Intl.NumberFormat("ca-ES", {
+  return new Intl.NumberFormat("es-ES", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(score);

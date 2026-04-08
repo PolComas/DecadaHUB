@@ -24,49 +24,49 @@ export default function DashboardPage() {
     <>
       <section className="dashboard-header">
         <div className="dashboard-header-copy">
-          <h2>Portfolio Pulse</h2>
+          <h2>Pulso de cartera</h2>
           <p>
-            Relació, resposta i risc per prioritzar millor el dia.
+            Relación, respuesta y riesgo para priorizar mejor el día.
           </p>
         </div>
       </section>
 
       <section className="stats-grid">
         <MetricCard
-          label="Clients actius"
+          label="Clientes activos"
           note="Cartera visible"
           value={summary ? String(summary.totalClients) : "—"}
         />
         <MetricCard
-          label="Emails 30d"
-          note="Entrants + sortints"
+          label="Correos 30d"
+          note="Entrantes + salientes"
           value={summary ? formatCompactNumber(summary.totalEmails30d) : "—"}
         />
         <MetricCard
-          label="Resposta equip"
-          note="Mitjana h. laborables"
+          label="Respuesta equipo"
+          note="Media h. laborables"
           value={summary ? formatHours(summary.averageTeamResponseHours) : "—"}
         />
         <MetricCard
-          label="Clients crítics"
-          note="Risk score >= 6"
+          label="Clientes críticos"
+          note="Puntuación de riesgo >= 6"
           value={summary ? String(summary.highRiskClients) : "—"}
         />
         <MetricCard
-          label="Reunions 30d"
-          note="Calendari consolidat"
+          label="Reuniones 30d"
+          note="Calendario consolidado"
           value={summary ? String(summary.totalMeetings30d) : "—"}
         />
         <MetricCard
-          label="Accions obertes"
-          note="Seguiment pendent"
+          label="Acciones abiertas"
+          note="Seguimiento pendiente"
           value={summary ? String(summary.openActions) : "—"}
         />
       </section>
 
       {globalError ? (
         <section className="callout error">
-          <strong>No s'ha pogut carregar el dashboard.</strong>
+          <strong>No se ha podido cargar el panel.</strong>
           <p>{globalError}</p>
         </section>
       ) : null}
@@ -75,8 +75,8 @@ export default function DashboardPage() {
         <section className="card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Priority Board</p>
-              <h3>Clients a vigilar avui</h3>
+              <p className="eyebrow">Prioridades</p>
+              <h3>Clientes a vigilar hoy</h3>
             </div>
           </div>
 
@@ -94,19 +94,19 @@ export default function DashboardPage() {
                     <strong>{client.client_name}</strong>
                     <RiskPill score={client.risk_score_heuristic} />
                   </div>
-                  <p>{client.notes ?? "Sense context addicional."}</p>
+                  <p>{client.notes ?? "Sin contexto adicional."}</p>
                   <div className="priority-metrics">
-                    <span>{client.stalled_threads_gt_72h} fils estancats</span>
-                    <span>{client.overdue_actions} accions vençudes</span>
-                    <span>{client.negative_signals_30d} senyals neg.</span>
+                    <span>{client.stalled_threads_gt_72h} hilos estancados</span>
+                    <span>{client.overdue_actions} acciones vencidas</span>
+                    <span>{client.negative_signals_30d} señales neg.</span>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
             <EmptyState
-              message="Quan hi hagi clients carregats, apareixeran aquí."
-              title="Sense clients"
+              message="Cuando haya clientes cargados, aparecerán aquí."
+              title="Sin clientes"
             />
           )}
         </section>
@@ -114,8 +114,8 @@ export default function DashboardPage() {
         <section className="card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Response Watch</p>
-              <h3>Temps de resposta</h3>
+              <p className="eyebrow">Seguimiento de respuestas</p>
+              <h3>Tiempo de respuesta</h3>
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export default function DashboardPage() {
             <div className="stack-list">
               {slowestTeamReplies.map((client) => (
                 <ActivityCallout
-                  body={`${client.stalled_threads_gt_72h} fils parats, ${client.open_actions} accions obertes, ${client.negative_signals_30d} senyals neg.`}
+                  body={`${client.stalled_threads_gt_72h} hilos estancados, ${client.open_actions} acciones abiertas, ${client.negative_signals_30d} señales neg.`}
                   key={client.id}
                   title={`${client.client_name} · ${formatHours(client.avg_team_response_hours_30d)}`}
                   tone={client.avg_team_response_hours_30d > 24 ? "warning" : "default"}
@@ -137,8 +137,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <EmptyState
-              message="Quan hi hagi dades de resposta, apareixerà aquí."
-              title="Sense dades"
+              message="Cuando haya datos de respuesta, aparecerán aquí."
+              title="Sin datos"
             />
           )}
         </section>
@@ -147,8 +147,8 @@ export default function DashboardPage() {
       <section className="card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Portfolio</p>
-            <h3>Tots els clients</h3>
+            <p className="eyebrow">Cartera</p>
+            <h3>Todos los clientes</h3>
           </div>
         </div>
 
@@ -161,12 +161,12 @@ export default function DashboardPage() {
         ) : dashboard?.clients.length ? (
           <div className="portfolio-table">
             <div className="portfolio-header">
-              <span>Client</span>
-              <span>Risc</span>
-              <span>Resposta equip</span>
-              <span>Fils 72h+</span>
-              <span>Accions</span>
-              <span>Senyals neg.</span>
+              <span>Cliente</span>
+              <span>Riesgo</span>
+              <span>Respuesta equipo</span>
+              <span>Hilos 72h+</span>
+              <span>Acciones</span>
+              <span>Señales neg.</span>
             </div>
             {dashboard.clients.map((client) => (
               <ClientListRow client={client} key={client.id} />
@@ -174,8 +174,8 @@ export default function DashboardPage() {
           </div>
         ) : (
           <EmptyState
-            message="Carrega dades per veure la cartera."
-            title="Sense clients"
+            message="Carga datos para ver la cartera."
+            title="Sin clientes"
           />
         )}
       </section>

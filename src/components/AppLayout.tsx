@@ -94,7 +94,7 @@ export default function AppLayout() {
     }
   }
 
-  const userEmail = user?.email ?? "Sense usuari";
+  const userEmail = user?.email ?? "Sin usuario";
   const userInitials = initials(userEmail.split("@")[0] ?? "U");
 
   return (
@@ -120,7 +120,7 @@ export default function AppLayout() {
                 onClick={() => setIsSidebarOpen(true)}
                 type="button"
               >
-                Menu
+                Menú
               </button>
 
               <div className="topbar-meta">
@@ -128,8 +128,8 @@ export default function AppLayout() {
                 <span className="breadcrumb-separator">/</span>
                 <span>
                   {lastUpdated
-                    ? `Actualitzat ${formatDateTime(lastUpdated.toISOString())}`
-                    : "Carregant..."}
+                    ? `Actualizado ${formatDateTime(lastUpdated.toISOString())}`
+                    : "Cargando..."}
                 </span>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function AppLayout() {
                 onClick={() => void loadDashboard()}
                 type="button"
               >
-                {isRefreshing ? "Actualitzant..." : "Refrescar"}
+                {isRefreshing ? "Actualizando..." : "Actualizar"}
               </button>
               <div className="session-chip">
                 <div className="user-avatar-sm">{userInitials}</div>
@@ -151,7 +151,7 @@ export default function AppLayout() {
                 onClick={() => void handleSignOut()}
                 type="button"
               >
-                Sortir
+                Salir
               </button>
             </div>
           </header>
@@ -184,5 +184,5 @@ function toMessage(error: unknown) {
     return error.message;
   }
 
-  return "S'ha produït un error inesperat.";
+  return "Se ha producido un error inesperado.";
 }

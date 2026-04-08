@@ -40,7 +40,7 @@ function BootSplash() {
     <div className="auth-shell">
       <div className="auth-card loading-card">
         <p className="eyebrow">DecadaHUB</p>
-        <h2 className="auth-title">Preparant la sessió...</h2>
+        <h2 className="auth-title">Preparando la sesión...</h2>
         <div className="skeleton-block tall" />
       </div>
     </div>

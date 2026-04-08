@@ -24,14 +24,14 @@ export default function DismissedPage() {
       setClients(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error carregant clients descartats.");
+      setError(err instanceof Error ? err.message : "Error al cargar clientes descartados.");
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleRestore(client: DismissedClient) {
-    if (!window.confirm(`Restaurar "${client.name}"? Tornarà a ser visible al dashboard.`)) return;
+    if (!window.confirm(`¿Restaurar "${client.name}"? Volverá a ser visible en el panel.`)) return;
 
     setRestoringId(client.id);
     try {
@@ -39,7 +39,7 @@ export default function DismissedPage() {
       setClients((prev) => prev.filter((c) => c.id !== client.id));
       await refreshDashboard();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error restaurant client.");
+      setError(err instanceof Error ? err.message : "Error al restaurar el cliente.");
     } finally {
       setRestoringId(null);
     }
@@ -50,13 +50,13 @@ export default function DismissedPage() {
       <section className="page-header">
         <div className="page-header-copy">
           <div className="detail-breadcrumbs" style={{ color: "var(--text-tertiary)" }}>
-            <Link className="topbar-link" to="/">Dashboard</Link>
+            <Link className="topbar-link" to="/">Panel</Link>
             <span>/</span>
-            <span>Clients descartats</span>
+            <span>Clientes descartados</span>
           </div>
-          <h2 className="page-title">Clients descartats</h2>
+          <h2 className="page-title">Clientes descartados</h2>
           <p className="page-subtitle">
-            Clients marcats com a inactius. Pots restaurar-los perque tornin a aparèixer al dashboard i al menú lateral.
+            Clientes marcados como inactivos. Puedes restaurarlos para que vuelvan a aparecer en el panel y en el menú lateral.
           </p>
         </div>
       </section>
@@ -77,8 +77,8 @@ export default function DismissedPage() {
           </div>
         ) : clients.length === 0 ? (
           <EmptyState
-            title="Cap client descartat"
-            message="No hi ha clients inactius. Quan descartis un client des de la seva fitxa, apareixerà aquí."
+            title="Ningún cliente descartado"
+            message="No hay clientes inactivos. Cuando descartes un cliente desde su ficha, aparecerá aquí."
           />
         ) : (
           <div className="stack-list">
@@ -90,12 +90,12 @@ export default function DismissedPage() {
                   </div>
                   <div className="dismissed-row-copy">
                     <strong>{client.name}</strong>
-                    <p>{client.primary_domain ?? "Sense domini"}</p>
+                    <p>{client.primary_domain ?? "Sin dominio"}</p>
                   </div>
                 </div>
                 <div className="dismissed-row-meta">
                   <span className="dismissed-date">
-                    Descartat {formatDateTime(client.updated_at)}
+                    Descartado {formatDateTime(client.updated_at)}
                   </span>
                   <button
                     className="restore-button"
@@ -103,7 +103,7 @@ export default function DismissedPage() {
                     onClick={() => void handleRestore(client)}
                     type="button"
                   >
-                    {restoringId === client.id ? "Restaurant..." : "Restaurar"}
+                    {restoringId === client.id ? "Restaurando..." : "Restaurar"}
                   </button>
                 </div>
               </div>

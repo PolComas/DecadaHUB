@@ -7,21 +7,21 @@ import type {
   ThreadStatus,
 } from "../types";
 
-const datetimeFormatter = new Intl.DateTimeFormat("ca-ES", {
+const datetimeFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
 });
 
-const dateFormatter = new Intl.DateTimeFormat("ca-ES", {
+const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
   year: "numeric",
 });
 
 export function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("ca-ES", {
+  return new Intl.NumberFormat("es-ES", {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(value);
@@ -32,7 +32,7 @@ export function formatHours(value: number) {
     return "0 h";
   }
 
-  return `${new Intl.NumberFormat("ca-ES", {
+  return `${new Intl.NumberFormat("es-ES", {
     minimumFractionDigits: value < 10 ? 1 : 0,
     maximumFractionDigits: 1,
   }).format(value)} h`;
@@ -48,7 +48,7 @@ export function formatMinutes(value: number) {
 
 export function formatDateTime(value: string | null) {
   if (!value) {
-    return "Sense data";
+    return "Sin fecha";
   }
 
   return datetimeFormatter.format(new Date(value));
@@ -56,25 +56,32 @@ export function formatDateTime(value: string | null) {
 
 export function formatDate(value: string | null) {
   if (!value) {
-    return "Sense data";
+    return "Sin fecha";
   }
 
   return dateFormatter.format(new Date(value));
 }
 
-export function statusLabel(status: ClientStatus | ThreadStatus | ActionStatus) {
+export function statusLabel(status: ClientStatus | ThreadStatus | ActionStatus | string | null) {
+  if (!status) {
+    return "Sin estado";
+  }
+
   const labels: Record<string, string> = {
-    active: "Actiu",
+    active: "Activo",
     paused: "En pausa",
-    churn_risk: "Risc de churn",
-    inactive: "Inactiu",
-    open: "Obert",
-    waiting_client: "Esperant client",
-    waiting_team: "Esperant equip",
-    closed: "Tancat",
-    in_progress: "En curs",
-    done: "Fet",
-    cancelled: "Cancel·lat",
+    churn_risk: "Riesgo de baja",
+    inactive: "Inactivo",
+    open: "Abierto",
+    waiting_client: "Esperando al cliente",
+    waiting_team: "Esperando al equipo",
+    closed: "Cerrado",
+    in_progress: "En curso",
+    done: "Hecho",
+    cancelled: "Cancelado",
+    confirmed: "Confirmado",
+    tentative: "Tentativo",
+    cancelled_meeting: "Cancelado",
   };
 
   return labels[status] ?? status;
@@ -82,8 +89,8 @@ export function statusLabel(status: ClientStatus | ThreadStatus | ActionStatus) 
 
 export function priorityLabel(priority: ActionPriority) {
   const labels: Record<ActionPriority, string> = {
-    low: "Baixa",
-    medium: "Mitjana",
+    low: "Baja",
+    medium: "Media",
     high: "Alta",
     critical: "Crítica",
   };
@@ -93,13 +100,13 @@ export function priorityLabel(priority: ActionPriority) {
 
 export function directionLabel(direction: MessageDirection | null) {
   if (!direction) {
-    return "Sense direcció";
+    return "Sin dirección";
   }
 
   const labels: Record<MessageDirection, string> = {
-    team_to_client: "Equip -> client",
-    client_to_team: "Client -> equip",
-    internal: "Intern",
+    team_to_client: "Equipo -> cliente",
+    client_to_team: "Cliente -> equipo",
+    internal: "Interno",
   };
 
   return labels[direction];
@@ -107,21 +114,21 @@ export function directionLabel(direction: MessageDirection | null) {
 
 export function sentimentLabel(label: SentimentLabel) {
   const labels: Record<Exclude<SentimentLabel, null>, string> = {
-    positive: "Positiu",
-    neutral: "Neutre",
-    negative: "Negatiu",
-    mixed: "Mixt",
+    positive: "Positivo",
+    neutral: "Neutral",
+    negative: "Negativo",
+    mixed: "Mixto",
   };
 
-  return label ? labels[label] : "Sense sentiment";
+  return label ? labels[label] : "Sin sentimiento";
 }
 
 export function timelineLabel(type: string) {
   const labels: Record<string, string> = {
-    email: "Email",
-    meeting: "Reunió",
-    transcript: "Transcript",
-    action_item: "Acció",
+    email: "Correo",
+    meeting: "Reunión",
+    transcript: "Transcripción",
+    action_item: "Acción",
   };
 
   return labels[type] ?? type;
