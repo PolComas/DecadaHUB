@@ -6,7 +6,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ClientPage from "./pages/ClientPage";
 import DismissedPage from "./pages/DismissedPage";
 import LoginPage from "./pages/LoginPage";
-import "./styles.css";
+import OrphanTranscriptsPage from "./pages/OrphanTranscriptsPage";
 
 function AppRouter() {
   const { hasEnv, isLoading, session } = useAuth();
@@ -24,6 +24,7 @@ function AppRouter() {
           <Route index element={<DashboardPage />} />
           <Route path="/clients/:clientId" element={<ClientPage />} />
           <Route path="/dismissed" element={<DismissedPage />} />
+          <Route path="/orphan-transcripts" element={<OrphanTranscriptsPage />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Route>
       ) : (

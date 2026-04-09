@@ -134,6 +134,9 @@ export default function AppSidebar({
         </div>
 
         <div className="sidebar-footer">
+          <NavLink className="sidebar-footer-link" onClick={onClose} to="/orphan-transcripts">
+            Transcripciones sin asignar
+          </NavLink>
           <NavLink className="sidebar-footer-link" onClick={onClose} to="/dismissed">
             Clientes descartados
           </NavLink>

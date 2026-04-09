@@ -7,6 +7,7 @@ interface TranscriptsTabProps {
   transcripts: Transcript[];
   isLoading: boolean;
   onDeleteTranscript: (transcriptId: string, title: string) => void;
+  onMoveTranscript: (transcript: Transcript) => void;
 }
 
 export default function TranscriptsTab({
@@ -14,6 +15,7 @@ export default function TranscriptsTab({
   transcripts,
   isLoading,
   onDeleteTranscript,
+  onMoveTranscript,
 }: TranscriptsTabProps) {
   return (
     <>
@@ -45,13 +47,21 @@ export default function TranscriptsTab({
                   <span>Sin enlace</span>
                 )}
                 <button
+                  className="ghost-button"
+                  onClick={() => onMoveTranscript(transcript)}
+                  style={{ fontSize: 12, padding: "4px 10px" }}
+                  type="button"
+                >
+                  Mover a...
+                </button>
+                <button
                   className="delete-btn"
                   disabled={deletingTranscriptId === transcript.id}
                   onClick={() => onDeleteTranscript(transcript.id, transcript.file_name ?? "Transcripción")}
                   title="Eliminar transcripción"
                   type="button"
                 >
-                  {deletingTranscriptId === transcript.id ? "Eliminando..." : "🗑 Eliminar"}
+                  {deletingTranscriptId === transcript.id ? "Eliminando..." : "Eliminar"}
                 </button>
               </div>
             </div>

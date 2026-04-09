@@ -23,7 +23,7 @@
 
 .risk-pill.critical {
   background: var(--risk-high-bg);
-  color: #b91c1c;
+  color: var(--risk-high-text);
   border-color: var(--risk-high-border);
 }
 
@@ -34,7 +34,7 @@
 
 .risk-pill.warning {
   background: var(--risk-medium-bg);
-  color: #92400e;
+  color: var(--risk-medium-text);
   border-color: var(--risk-medium-border);
 }
 
@@ -44,7 +44,7 @@
 
 .risk-pill.healthy {
   background: var(--risk-ok-bg);
-  color: #047857;
+  color: var(--risk-ok-text);
   border-color: var(--risk-ok-border);
 }
 
@@ -52,28 +52,28 @@
   background: var(--risk-ok);
 }
 
-/* Sidebar risk pills */
+/* Sidebar risk pills — use same text tokens (dark-on-light in light mode, light-on-dark in dark mode) */
 .sidebar .risk-pill.critical {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--risk-high-text);
   border-color: transparent;
 }
 
 .sidebar .risk-pill.warning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--risk-medium-text);
   border-color: transparent;
 }
 
 .sidebar .risk-pill.healthy {
-  background: rgba(16, 185, 129, 0.15);
-  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--risk-ok-text);
   border-color: transparent;
 }
 
 /* ── Activity callouts ──────────────────────────────── */
 .activity-callout {
-  padding: 14px 16px;
+  padding: 14px 18px;
 }
 
 .activity-callout.warning {
@@ -92,7 +92,7 @@
 .priority-card {
   display: grid;
   gap: 8px;
-  padding: 16px 18px;
+  padding: 16px 20px;
   border-radius: var(--radius);
   border: 1px solid var(--separator);
   background: var(--card);
@@ -297,19 +297,19 @@
 .thread-chip.waiting_team,
 .thread-chip.client_to_team {
   background: var(--risk-high-bg);
-  color: #b91c1c;
+  color: var(--risk-high-text);
 }
 
 .chip.satisfaction {
   background: var(--risk-ok-bg);
-  color: #047857;
+  color: var(--risk-ok-text);
 }
 
 .chip.follow-up,
 .thread-chip.waiting_client,
 .thread-chip.team_to_client {
   background: var(--risk-medium-bg);
-  color: #92400e;
+  color: var(--risk-medium-text);
 }
 
 .chip.topic,
@@ -513,4 +513,359 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ── Action rows ───────────────────────────────────── */
+.action-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--card);
+}
+
+.action-row.is-updating {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.action-row.status-open {
+  background: var(--accent-soft);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.action-row.status-in-progress {
+  background: var(--risk-medium-bg);
+  border-color: var(--risk-medium-border);
+}
+
+.action-row.status-done {
+  background: var(--risk-ok-bg);
+  border-color: var(--risk-ok-border);
+}
+
+.action-row.status-cancelled {
+  background: var(--surface-muted);
+  border-color: var(--separator);
+}
+
+.action-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.action-row-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.action-row-copy strong {
+  line-height: 1.35;
+}
+
+.action-row-copy p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.action-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-delete-btn {
+  padding: 4px 10px;
+  background: var(--surface-muted);
+  border-color: var(--separator-light);
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.action-delete-btn:hover {
+  background: var(--separator);
+  color: var(--text-primary);
+}
+
+.action-row-saving {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Action pill selects ───────────────────────────── */
+.action-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-height: 28px;
+  padding: 0 24px 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background-position:
+    calc(100% - 12px) calc(50% - 1px),
+    calc(100% - 8px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.action-pill-select.status-open,
+.action-pill-select.status-in-progress {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  color: var(--accent-text);
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
+.action-pill-select.status-open {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.action-pill-select.status-in-progress {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.action-pill-select.status-done {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-ok-text);
+  border-color: var(--risk-ok-border);
+}
+
+.action-pill-select.status-cancelled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
+  border-color: var(--separator);
+}
+
+.action-pill-select.priority-low {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-ok-text);
+  border-color: var(--risk-ok-border);
+}
+
+.action-pill-select.priority-medium {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-medium-text);
+  border-color: var(--risk-medium-border);
+}
+
+.action-pill-select.priority-high {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: #c2410c;
+  border-color: rgba(249, 115, 22, 0.24);
+}
+
+.action-pill-select.priority-critical {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-high-text);
+  border-color: var(--risk-high-border);
+}
+
+:root[data-theme="dark"] .action-pill-select {
+  background-color: rgba(11, 18, 32, 0.28);
+}
+
+:root[data-theme="dark"] .action-pill-select.priority-high {
+  color: #fdba74;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.action-pill-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.action-pill-select:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* ── Thread card status variants ───────────────────── */
+.thread-card.open {
+  background: var(--accent-soft);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.thread-card.waiting_client {
+  background: var(--risk-medium-bg);
+  border-color: var(--risk-medium-border);
+}
+
+.thread-card.waiting_team {
+  background: var(--risk-high-bg);
+  border-color: var(--risk-high-border);
+}
+
+.thread-card.closed {
+  background: var(--surface-muted);
+  border-color: var(--separator);
+}
+
+/* ── Thread status select ──────────────────────────── */
+.thread-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-height: 24px;
+  padding: 0 20px 0 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background-position:
+    calc(100% - 10px) calc(50% - 1px),
+    calc(100% - 6px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.thread-status-select.waiting_team,
+.thread-status-select.client_to_team {
+  background-color: var(--risk-high-bg);
+  color: var(--risk-high-text);
+  border-color: var(--risk-high-border);
+}
+
+.thread-status-select.waiting_client,
+.thread-status-select.team_to_client {
+  background-color: var(--risk-medium-bg);
+  color: var(--risk-medium-text);
+  border-color: var(--risk-medium-border);
+}
+
+.thread-status-select.open,
+.thread-status-select.closed {
+  background-color: var(--surface-muted);
+  color: var(--text-secondary);
+  border-color: var(--separator-light);
+}
+
+.thread-status-select.waiting_team,
+.thread-status-select.waiting_client,
+.thread-status-select.open,
+.thread-status-select.closed {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+}
+
+.thread-status-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ── Transcript link ───────────────────────────────── */
+.transcript-link {
+  white-space: nowrap;
+}
+
+/* ── Delete button on cards ────────────────────────── */
+.list-card-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.list-card-wrapper .list-card {
+  flex: 1;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.list-card-wrapper .list-card:hover {
+  background: var(--surface-muted);
+}
+
+.list-card-wrapper .thread-card.open:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.list-card-wrapper .thread-card.waiting_client:hover {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.list-card-wrapper .thread-card.waiting_team:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.list-card-wrapper .thread-card.closed:hover {
+  background: var(--separator);
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 150ms, background 150ms, color 150ms;
+  cursor: pointer;
+  border: none;
+}
+
+.list-card-wrapper:hover .delete-btn,
+.list-card:hover .delete-btn,
+.insight-card:hover .delete-btn {
+  opacity: 1;
+}
+
+.email-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.email-footer .delete-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.thread-footer .delete-btn,
+.meeting-footer .delete-btn,
+.transcript-footer .delete-btn,
+.list-footer .delete-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.thread-footer,
+.meeting-footer,
+.transcript-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.delete-btn:hover {
+  background: var(--risk-high-bg);
+  color: var(--risk-high);
 }

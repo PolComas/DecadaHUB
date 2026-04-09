@@ -45,7 +45,7 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  padding: 24px 28px;
+  padding: 20px 24px;
   border-radius: var(--radius-lg);
   background: var(--card);
   background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, transparent 60%);
@@ -140,7 +140,7 @@
 }
 
 .metric-card {
-  padding: 18px 20px;
+  padding: 16px 20px;
   position: relative;
   overflow: hidden;
 }
@@ -164,9 +164,9 @@
 .metric-card:hover,
 .priority-card:hover,
 .portfolio-row:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.01);
   box-shadow: var(--shadow-card-hover);
-  border-color: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent-soft);
 }
 
 .list-card:hover {
@@ -244,7 +244,7 @@
 }
 
 .card {
-  padding: 18px 22px;
+  padding: 16px 20px;
 }
 
 .section-header {
@@ -261,7 +261,7 @@
 }
 
 .section-header h3 {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   font-family: var(--font-display);
   letter-spacing: -0.02em;
@@ -284,7 +284,7 @@
 /* ── Focus metrics ──────────────────────────────────── */
 .focus-metric {
   border-radius: var(--radius);
-  padding: 16px 18px;
+  padding: 16px 20px;
   background: var(--card);
   border: 1px solid var(--separator);
   box-shadow: var(--shadow-card);
@@ -391,7 +391,7 @@
 }
 
 .risk-chart-total {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   font-family: var(--font-display);
   fill: var(--text-primary);

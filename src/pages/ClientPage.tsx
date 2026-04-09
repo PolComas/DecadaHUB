@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  assignTranscriptToClient,
   deleteActionItem,
   deleteEmail,
   deleteInsight,
@@ -21,11 +22,12 @@ import { EmptyState } from "../components/ui";
 import { useClientDetail } from "../hooks/useClientDetail";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useEffect, useState } from "react";
-import type { EmailMessageFull, MergeCandidate, ThreadStatus } from "../types";
+import type { EmailMessageFull, MergeCandidate, ThreadStatus, Transcript } from "../types";
 
 import ClientHero from "../components/client/ClientHero";
 import ClientKpis from "../components/client/ClientKpis";
 import MergedClientsSection from "../components/client/MergedClientsSection";
+import AssignClientDialog from "../components/AssignClientDialog";
 import MergeDialog from "../components/client/MergeDialog";
 import EmailDetailModal from "../components/client/EmailDetailModal";
 import ThreadDetailModal from "../components/client/ThreadDetailModal";
@@ -85,6 +87,13 @@ export default function ClientPage() {
   const [isMerging, setIsMerging] = useState(false);
   const [isMergeLoading, setIsMergeLoading] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Move transcript dialog
+  const [moveTranscript, setMoveTranscript] = useState<Transcript | null>(null);
+  const [moveCandidates, setMoveCandidates] = useState<MergeCandidate[]>([]);
+  const [moveCandidatesLoading, setMoveCandidatesLoading] = useState(false);
+  const [moveSearch, setMoveSearch] = useState("");
+  const [isMoving, setIsMoving] = useState(false);
 
   // Unmerge confirmation
   const [unmergeTarget, setUnmergeTarget] = useState<{ id: string; name: string } | null>(null);
@@ -271,6 +280,34 @@ export default function ClientPage() {
     }
   }
 
+  async function openMoveTranscriptDialog(transcript: Transcript) {
+    setMoveTranscript(transcript);
+    setMoveSearch("");
+    setMoveCandidatesLoading(true);
+    try {
+      setMoveCandidates(await fetchMergeCandidates(clientId!));
+    } catch {
+      setMoveCandidates([]);
+    } finally {
+      setMoveCandidatesLoading(false);
+    }
+  }
+
+  async function executeMoveTranscript(targetClientId: string) {
+    if (!moveTranscript) return;
+    setIsMoving(true);
+    try {
+      await assignTranscriptToClient(moveTranscript.id, targetClientId);
+      setMoveTranscript(null);
+      await refreshDashboard();
+      await loadDetail();
+    } catch (error) {
+      setDetailError(toMessage(error));
+    } finally {
+      setIsMoving(false);
+    }
+  }
+
   async function executeUnmerge() {
     if (!unmergeTarget) return;
     try {
@@ -404,6 +441,7 @@ export default function ClientPage() {
             transcripts={detail?.transcripts ?? []}
             isLoading={isLoading}
             onDeleteTranscript={(transcriptId, title) => setDeleteTarget({ id: transcriptId, kind: "transcript", label: title })}
+            onMoveTranscript={(transcript) => void openMoveTranscriptDialog(transcript)}
           />
         )}
       </section>
@@ -436,6 +474,20 @@ export default function ClientPage() {
           messages={threadMessages}
           isLoading={threadDetailLoading}
           onClose={() => { setThreadMessages(null); setThreadDetailLoading(false); }}
+        />
+      )}
+
+      {moveTranscript && (
+        <AssignClientDialog
+          title="Mover transcripción"
+          description={`Selecciona el cliente de destino para "${moveTranscript.file_name ?? "Transcripción"}". Los insights y acciones asociados también se moverán.`}
+          candidates={moveCandidates}
+          isLoading={moveCandidatesLoading}
+          isAssigning={isMoving}
+          search={moveSearch}
+          onSearchChange={setMoveSearch}
+          onSelect={(targetId) => void executeMoveTranscript(targetId)}
+          onClose={() => setMoveTranscript(null)}
         />
       )}
 

@@ -40,6 +40,15 @@
     align-items: flex-start;
   }
 
+  .action-row-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-row-controls {
+    justify-content: flex-start;
+  }
+
   .two-up,
   .two-up-wide {
     grid-template-columns: 1fr;

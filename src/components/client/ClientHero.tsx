@@ -29,7 +29,7 @@ export default function ClientHero({
           </div>
           {client ? <RiskPill score={client.risk_score_heuristic} /> : null}
         </div>
-        {client?.primary_domain ? <p className="hero-text">{client.primary_domain}</p> : null}
+        {client?.primary_domain && client.primary_domain !== client.client_name ? <p className="hero-text">{client.primary_domain}</p> : null}
       </div>
       <div className="detail-side-meta">
         <div className="session-chip muted">{client ? `${client.meetings_30d} reuniones / 30d` : "—"}</div>

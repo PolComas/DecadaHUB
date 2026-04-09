@@ -750,3 +750,37 @@ export async function unmergeClient(sourceId: string): Promise<void> {
     .eq("id", sourceId);
   if (restoreError) throw restoreError;
 }
+
+export async function fetchOrphanTranscripts(): Promise<Transcript[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from("transcripts")
+    .select("id, client_id, meeting_id, file_name, document_url, transcript_at, language_code, content_text")
+    .is("client_id", null)
+    .order("transcript_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function assignTranscriptToClient(transcriptId: string, clientId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  const { error: txError } = await supabase
+    .from("transcripts")
+    .update({ client_id: clientId })
+    .eq("id", transcriptId);
+  if (txError) throw txError;
+
+  await supabase
+    .from("ai_insights")
+    .update({ client_id: clientId })
+    .eq("entity_type", "transcript")
+    .eq("entity_id", transcriptId);
+
+  await supabase
+    .from("action_items")
+    .update({ client_id: clientId })
+    .eq("source_entity_type", "transcript")
+    .eq("source_entity_id", transcriptId);
+}
