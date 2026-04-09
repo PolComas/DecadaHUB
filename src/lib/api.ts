@@ -1,5 +1,7 @@
 import type {
   ActionItem,
+  ActionPriority,
+  ActionStatus,
   AiInsight,
   ClientDetail,
   ClientKpi,
@@ -114,6 +116,7 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
       return {
         ...kpi,
         id: kpi.client_id,
+        owner_team_member_id: client.owner_team_member_id ?? null,
         owner_name: client.owner_team_member_id
           ? ownerById.get(client.owner_team_member_id) ?? null
           : null,
@@ -131,6 +134,7 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
         ? ownerById.get(mailbox.team_member_id) ?? null
         : null,
     })),
+    teamMembers,
     summary: buildSummary(mergedClients),
   };
 }
@@ -225,6 +229,56 @@ export async function restoreClient(clientId: string): Promise<void> {
       .delete()
       .eq("value", client.primary_domain);
   }
+}
+
+export async function updateClientNotes(clientId: string, notes: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const normalizedNotes = notes.trim();
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ notes: normalizedNotes ? normalizedNotes : null })
+    .eq("id", clientId);
+
+  if (error) throw error;
+}
+
+export async function updateClientOwner(clientId: string, ownerTeamMemberId: string | null): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ owner_team_member_id: ownerTeamMemberId })
+    .eq("id", clientId);
+
+  if (error) throw error;
+}
+
+export async function updateActionItem(
+  actionId: string,
+  updates: Partial<Pick<ActionItem, "status" | "priority">>,
+): Promise<ActionItem> {
+  const supabase = getSupabaseClient();
+
+  const payload: Partial<Pick<ActionItem, "status" | "priority">> = {};
+
+  if (updates.status) {
+    payload.status = updates.status as ActionStatus;
+  }
+
+  if (updates.priority) {
+    payload.priority = updates.priority as ActionPriority;
+  }
+
+  const { data, error } = await supabase
+    .from("action_items")
+    .update(payload)
+    .eq("id", actionId)
+    .select("id, client_id, title, details, due_at, status, priority, meeting_id")
+    .single();
+
+  if (error) throw error;
+  return data as ActionItem;
 }
 
 export async function fetchMergeCandidates(excludeId: string): Promise<MergeCandidate[]> {

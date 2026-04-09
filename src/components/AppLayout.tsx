@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
+import ThemeToggle from "./ThemeToggle";
 import { fetchDashboardOverview } from "../lib/api";
 import { formatDateTime } from "../lib/formatters";
 import { toMessage } from "../lib/errors";
@@ -136,6 +137,7 @@ export default function AppLayout() {
             </div>
 
             <div className="topbar-right">
+              <ThemeToggle compact />
               <button
                 className="ghost-button"
                 onClick={() => void loadDashboard()}
@@ -179,4 +181,3 @@ export default function AppLayout() {
 export function useAppLayoutContext() {
   return useOutletContext<AppLayoutContextValue>();
 }
-

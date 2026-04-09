@@ -160,6 +160,7 @@ export interface TimelineEvent {
 
 export interface ClientOverview extends ClientKpi {
   id: string;
+  owner_team_member_id: string | null;
   owner_name: string | null;
   notes: string | null;
   slug: string | null;
@@ -178,6 +179,7 @@ export interface DashboardSummary {
 export interface DashboardOverview {
   clients: ClientOverview[];
   mailboxes: Array<Mailbox & { owner_name: string | null }>;
+  teamMembers: TeamMember[];
   summary: DashboardSummary;
 }
 

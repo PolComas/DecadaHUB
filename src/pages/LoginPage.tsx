@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../lib/auth";
 import { toMessage } from "../lib/errors";
 
@@ -59,6 +60,7 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
         <div className="auth-brand">
           <div className="auth-brand-mark">D</div>
           <span className="auth-brand-name">DecadaHUB</span>
+          <ThemeToggle compact />
         </div>
 
         {view === "login" ? (
@@ -175,4 +177,3 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
     </div>
   );
 }
-

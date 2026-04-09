@@ -7,6 +7,9 @@ import {
   fetchThreadMessages,
   mergeClients,
   unmergeClient,
+  updateActionItem,
+  updateClientNotes,
+  updateClientOwner,
 } from "../lib/api";
 import { toMessage } from "../lib/errors";
 import { useAppLayoutContext } from "../components/AppLayout";
@@ -33,7 +36,7 @@ import TranscriptsTab from "../components/client/tabs/TranscriptsTab";
 type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "meetings" | "transcripts";
 
 const TAB_CONFIG: { key: DetailTab; label: string }[] = [
-  { key: "timeline", label: "Timeline" },
+  { key: "timeline", label: "Cronología" },
   { key: "emails", label: "Correos" },
   { key: "insights", label: "Análisis" },
   { key: "actions", label: "Acciones" },
@@ -61,8 +64,12 @@ export default function ClientPage() {
   const navigate = useNavigate();
   const { dashboard, refreshDashboard } = useAppLayoutContext();
   const client = dashboard?.clients.find((item) => item.id === clientId) ?? null;
+  const teamMembers = dashboard?.teamMembers ?? [];
   const { detail, setDetail, isLoading, detailError, setDetailError, loadDetail } = useClientDetail(clientId);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isSavingOwner, setIsSavingOwner] = useState(false);
+  const [updatingActionIds, setUpdatingActionIds] = useState<string[]>([]);
 
   // Dismiss confirmation
   const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -110,6 +117,34 @@ export default function ClientPage() {
       setDetailError(toMessage(error));
     } finally {
       setIsDismissing(false);
+    }
+  }
+
+  async function handleSaveNotes(notes: string) {
+    if (!clientId) return;
+    setIsSavingNotes(true);
+    try {
+      await updateClientNotes(clientId, notes);
+      await refreshDashboard();
+    } catch (error) {
+      setDetailError(toMessage(error));
+      throw error;
+    } finally {
+      setIsSavingNotes(false);
+    }
+  }
+
+  async function handleSaveOwner(ownerTeamMemberId: string | null) {
+    if (!clientId) return;
+    setIsSavingOwner(true);
+    try {
+      await updateClientOwner(clientId, ownerTeamMemberId);
+      await refreshDashboard();
+    } catch (error) {
+      setDetailError(toMessage(error));
+      throw error;
+    } finally {
+      setIsSavingOwner(false);
     }
   }
 
@@ -194,6 +229,27 @@ export default function ClientPage() {
     }
   }
 
+  async function handleUpdateAction(actionId: string, updates: { status?: "open" | "in_progress" | "done" | "cancelled"; priority?: "low" | "medium" | "high" | "critical" }) {
+    setUpdatingActionIds((prev) => [...prev, actionId]);
+    try {
+      const updated = await updateActionItem(actionId, updates);
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              actions: prev.actions.map((action) => (action.id === actionId ? updated : action)),
+            }
+          : prev,
+      );
+      await refreshDashboard();
+    } catch (error) {
+      setDetailError(toMessage(error));
+      throw error;
+    } finally {
+      setUpdatingActionIds((prev) => prev.filter((id) => id !== actionId));
+    }
+  }
+
   async function executeUnmerge() {
     if (!unmergeTarget) return;
     try {
@@ -231,8 +287,13 @@ export default function ClientPage() {
       <ClientHero
         client={client}
         isDismissing={isDismissing}
+        isSavingNotes={isSavingNotes}
+        isSavingOwner={isSavingOwner}
         onDismiss={() => setShowDismissConfirm(true)}
         onOpenMergeDialog={() => void openMergeDialog()}
+        onSaveNotes={(notes) => handleSaveNotes(notes)}
+        onSaveOwner={(ownerTeamMemberId) => handleSaveOwner(ownerTeamMemberId)}
+        teamMembers={teamMembers}
       />
 
       <ClientKpis client={client} />
@@ -274,9 +335,25 @@ export default function ClientPage() {
       {/* Tab content */}
       <section className="card fade-in" key={activeTab} role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
         {activeTab === "timeline" && <TimelineTab timeline={detail?.timeline ?? []} isLoading={isLoading} />}
-        {activeTab === "emails" && <EmailsTab messages={detail?.messages ?? []} isLoading={isLoading} onOpenEmail={(id) => void handleOpenEmail(id)} onDeleteEmail={(id, subject) => setDeleteTarget({ id, subject })} />}
+        {activeTab === "emails" && (
+          <EmailsTab
+            clientName={client?.client_name ?? "cliente"}
+            messages={detail?.messages ?? []}
+            isLoading={isLoading}
+            onOpenEmail={(id) => void handleOpenEmail(id)}
+            onDeleteEmail={(id, subject) => setDeleteTarget({ id, subject })}
+          />
+        )}
         {activeTab === "insights" && <InsightsTab insights={detail?.insights ?? []} isLoading={isLoading} />}
-        {activeTab === "actions" && <ActionsTab actions={detail?.actions ?? []} isLoading={isLoading} />}
+        {activeTab === "actions" && (
+          <ActionsTab
+            actions={detail?.actions ?? []}
+            clientName={client?.client_name ?? "cliente"}
+            isLoading={isLoading}
+            updatingActionIds={updatingActionIds}
+            onUpdateAction={(actionId, updates) => handleUpdateAction(actionId, updates)}
+          />
+        )}
         {activeTab === "threads" && <ThreadsTab threads={detail?.threads ?? []} isLoading={isLoading} onOpenThread={(id, subject) => void handleOpenThread(id, subject)} />}
         {activeTab === "meetings" && <MeetingsTab meetings={detail?.meetings ?? []} isLoading={isLoading} />}
         {activeTab === "transcripts" && <TranscriptsTab transcripts={detail?.transcripts ?? []} isLoading={isLoading} />}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { currentDateStamp, downloadCsv } from "../lib/csv";
 import { formatCompactNumber, formatHours } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
 import DashboardFilters, { EMPTY_FILTERS, filterClients, type DashboardFilterState } from "../components/DashboardFilters";
@@ -12,6 +13,7 @@ import {
   RiskPill,
   SkeletonBlock,
 } from "../components/ui";
+import type { ClientOverview } from "../types";
 
 export default function DashboardPage() {
   const { dashboard, isBooting, globalError, refreshDashboard } = useAppLayoutContext();
@@ -33,6 +35,24 @@ export default function DashboardPage() {
       .slice(0, 4),
     [displayClients],
   );
+
+  function handleExportPortfolioCsv() {
+    downloadCsv<ClientOverview>(
+      `cartera-${currentDateStamp()}.csv`,
+      [
+        { header: "Cliente", value: (client) => client.client_name },
+        { header: "Responsable", value: (client) => client.owner_name ?? "" },
+        { header: "Riesgo", value: (client) => client.risk_score_heuristic },
+        { header: "Respuesta equipo (h)", value: (client) => client.avg_team_response_hours_30d },
+        { header: "Hilos 72h+", value: (client) => client.stalled_threads_gt_72h },
+        { header: "Acciones abiertas", value: (client) => client.open_actions },
+        { header: "Acciones vencidas", value: (client) => client.overdue_actions },
+        { header: "Señales negativas 30d", value: (client) => client.negative_signals_30d },
+        { header: "Notas", value: (client) => client.notes ?? "" },
+      ],
+      displayClients,
+    );
+  }
 
   return (
     <>
@@ -170,6 +190,11 @@ export default function DashboardPage() {
             <p className="eyebrow">Cartera</p>
             <h3>Todos los clientes ({displayClients.length})</h3>
           </div>
+          {displayClients.length ? (
+            <button className="ghost-button" onClick={handleExportPortfolioCsv} type="button">
+              Exportar CSV
+            </button>
+          ) : null}
         </div>
 
         {isBooting ? (

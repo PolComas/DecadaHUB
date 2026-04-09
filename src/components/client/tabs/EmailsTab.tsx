@@ -1,3 +1,4 @@
+import { currentDateStamp, downloadCsv, safeFilenamePart } from "../../../lib/csv";
 import { directionLabel, formatDateTime } from "../../../lib/formatters";
 import { usePagination } from "../../../hooks/usePagination";
 import Pagination from "../../Pagination";
@@ -5,20 +6,47 @@ import { CountChip, EmptyState, SkeletonBlock } from "../../ui";
 import type { EmailMessage } from "../../../types";
 
 interface EmailsTabProps {
+  clientName: string;
   messages: EmailMessage[];
   isLoading: boolean;
   onOpenEmail: (messageId: string) => void;
   onDeleteEmail: (id: string, subject: string) => void;
 }
 
-export default function EmailsTab({ messages, isLoading, onOpenEmail, onDeleteEmail }: EmailsTabProps) {
+export default function EmailsTab({
+  clientName,
+  messages,
+  isLoading,
+  onOpenEmail,
+  onDeleteEmail,
+}: EmailsTabProps) {
   const { slice, page, totalPages, hasNext, hasPrev, setPage } = usePagination(messages, 12);
+
+  function handleExportCsv() {
+    downloadCsv<EmailMessage>(
+      `${safeFilenamePart(clientName)}-correos-${currentDateStamp()}.csv`,
+      [
+        { header: "Asunto", value: (message) => message.subject ?? "" },
+        { header: "Dirección", value: (message) => directionLabel(message.direction) },
+        { header: "Enviado el", value: (message) => message.sent_at },
+        { header: "Resumen", value: (message) => message.snippet ?? "" },
+      ],
+      messages,
+    );
+  }
 
   return (
     <>
       <div className="section-header">
         <h3>Últimos mensajes</h3>
-        <CountChip>{messages.length}</CountChip>
+        <div className="section-actions">
+          {messages.length ? (
+            <button className="ghost-button" onClick={handleExportCsv} type="button">
+              Exportar CSV
+            </button>
+          ) : null}
+          <CountChip>{messages.length}</CountChip>
+        </div>
       </div>
       {isLoading ? (
         <div className="stack-list"><SkeletonBlock /><SkeletonBlock /></div>
