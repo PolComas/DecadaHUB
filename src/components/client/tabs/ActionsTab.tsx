@@ -1,5 +1,5 @@
 import { currentDateStamp, downloadCsv, safeFilenamePart } from "../../../lib/csv";
-import { formatDateTime, priorityLabel, statusLabel } from "../../../lib/formatters";
+import { priorityLabel, statusLabel } from "../../../lib/formatters";
 import { usePagination } from "../../../hooks/usePagination";
 import Pagination from "../../Pagination";
 import { CountChip, EmptyState, SkeletonBlock } from "../../ui";
@@ -18,6 +18,28 @@ interface ActionsTabProps {
 
 const STATUS_OPTIONS: ActionStatus[] = ["open", "in_progress", "done", "cancelled"];
 const PRIORITY_OPTIONS: ActionPriority[] = ["low", "medium", "high", "critical"];
+
+function statusTone(status: ActionStatus) {
+  const tones: Record<ActionStatus, string> = {
+    open: "status-open",
+    in_progress: "status-in-progress",
+    done: "status-done",
+    cancelled: "status-cancelled",
+  };
+
+  return tones[status];
+}
+
+function priorityTone(priority: ActionPriority) {
+  const tones: Record<ActionPriority, string> = {
+    low: "priority-low",
+    medium: "priority-medium",
+    high: "priority-high",
+    critical: "priority-critical",
+  };
+
+  return tones[priority];
+}
 
 export default function ActionsTab({
   actions,
@@ -60,68 +82,58 @@ export default function ActionsTab({
       ) : actions.length ? (
         <>
           <div className="stack-list">
-            {slice.map((action) => (
-              <div className="list-card" key={action.id}>
-                <div className="list-title-line">
-                  <strong>{action.title}</strong>
-                  <span className={`priority-dot ${action.priority}`} />
-                </div>
-                <p>{action.details ?? "Sin detalle."}</p>
-                <div className="list-footer action-footer">
-                  <span>{formatDateTime(action.due_at)}</span>
-                </div>
-                <div className="action-controls">
-                  <label className="action-control-group">
-                    <span>Estado</span>
-                    <select
-                      className="inline-select"
-                      disabled={updatingActionIds.includes(action.id)}
-                      value={action.status}
-                      onChange={(event) =>
-                        void onUpdateAction(action.id, { status: event.target.value as ActionStatus })
-                      }
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {statusLabel(status)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            {slice.map((action) => {
+              const isUpdating = updatingActionIds.includes(action.id);
 
-                  <label className="action-control-group">
-                    <span>Prioridad</span>
-                    <select
-                      className="inline-select"
-                      disabled={updatingActionIds.includes(action.id)}
-                      value={action.priority}
-                      onChange={(event) =>
-                        void onUpdateAction(action.id, { priority: event.target.value as ActionPriority })
-                      }
-                    >
-                      {PRIORITY_OPTIONS.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {priorityLabel(priority)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+              return (
+                <article
+                  className={`list-card action-row ${statusTone(action.status)} ${isUpdating ? "is-updating" : ""}`}
+                  key={action.id}
+                >
+                  <div className="action-row-header">
+                    <div className="action-row-copy">
+                      <strong>{action.title}</strong>
+                      {action.details ? <p>{action.details}</p> : null}
+                      {isUpdating ? <span className="action-row-saving">Guardando...</span> : null}
+                    </div>
 
-                  {action.status !== "done" ? (
-                    <button
-                      className="ghost-button action-done-button"
-                      disabled={updatingActionIds.includes(action.id)}
-                      onClick={() => void onUpdateAction(action.id, { status: "done" })}
-                      type="button"
-                    >
-                      {updatingActionIds.includes(action.id) ? "Guardando..." : "Marcar como hecha"}
-                    </button>
-                  ) : (
-                    <span className="thread-chip closed">Hecha</span>
-                  )}
-                </div>
-              </div>
-            ))}
+                    <div className="action-row-controls">
+                      <select
+                        className={`action-pill-select ${priorityTone(action.priority)}`}
+                        aria-label="Prioridad de la acción"
+                        disabled={isUpdating}
+                        value={action.priority}
+                        onChange={(event) =>
+                          void onUpdateAction(action.id, { priority: event.target.value as ActionPriority })
+                        }
+                      >
+                        {PRIORITY_OPTIONS.map((priority) => (
+                          <option key={priority} value={priority}>
+                            {priorityLabel(priority)}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        className={`action-pill-select ${statusTone(action.status)}`}
+                        aria-label="Estado de la acción"
+                        disabled={isUpdating}
+                        value={action.status}
+                        onChange={(event) =>
+                          void onUpdateAction(action.id, { status: event.target.value as ActionStatus })
+                        }
+                      >
+                        {STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {statusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
           <Pagination page={page} totalPages={totalPages} hasNext={hasNext} hasPrev={hasPrev} onPageChange={setPage} />
         </>

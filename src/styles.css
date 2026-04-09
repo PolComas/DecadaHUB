@@ -661,6 +661,7 @@ textarea:focus-visible {
 }
 
 .theme-toggle {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -690,7 +691,36 @@ textarea:focus-visible {
 }
 
 .theme-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   min-width: 132px;
+  min-height: 35px;
+  font-size: 13px;
+  font-weight: 500;
+  border-color: var(--separator-light);
+  padding: 7px 34px 7px 14px;
+  background: var(--surface-muted);
+  box-shadow: none;
+  line-height: 1.2;
+}
+
+.theme-select:hover {
+  background: var(--separator);
+}
+
+.theme-toggle.compact::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 8px;
+  height: 5px;
+  transform: translateY(-40%);
+  pointer-events: none;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  opacity: 0.55;
 }
 
 .theme-select:focus,
@@ -1409,34 +1439,180 @@ textarea:focus-visible {
   background: var(--risk-high);
 }
 
-.action-footer {
-  margin-top: 8px;
+.action-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--card);
 }
 
-.action-controls {
+.action-row.is-updating {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.action-row.status-open {
+  background: var(--accent-soft);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.action-row.status-in-progress {
+  background: var(--risk-medium-bg);
+  border-color: var(--risk-medium-border);
+}
+
+.action-row.status-done {
+  background: var(--risk-ok-bg);
+  border-color: var(--risk-ok-border);
+}
+
+.action-row.status-cancelled {
+  background: var(--surface-muted);
+  border-color: var(--separator);
+}
+
+.action-row-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
-  margin-top: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.action-control-group {
+.action-row-copy {
+  min-width: 0;
   display: grid;
   gap: 4px;
-  min-width: 132px;
 }
 
-.action-control-group span {
+.action-row-copy strong {
+  line-height: 1.35;
+}
+
+.action-row-copy p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.action-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-row-saving {
   color: var(--text-tertiary);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
-.action-done-button {
-  align-self: stretch;
+.action-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-height: 28px;
+  padding: 0 24px 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background-position:
+    calc(100% - 12px) calc(50% - 1px),
+    calc(100% - 8px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.action-pill-select.status-open,
+.action-pill-select.status-in-progress {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  color: var(--accent-text);
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
+.action-pill-select.status-open {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.action-pill-select.status-in-progress {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.action-pill-select.status-done {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-ok-text);
+  border-color: var(--risk-ok-border);
+}
+
+.action-pill-select.status-cancelled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
+  border-color: var(--separator);
+}
+
+.action-pill-select.priority-low {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-ok-text);
+  border-color: var(--risk-ok-border);
+}
+
+.action-pill-select.priority-medium {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-medium-text);
+  border-color: var(--risk-medium-border);
+}
+
+.action-pill-select.priority-high {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: #c2410c;
+  border-color: rgba(249, 115, 22, 0.24);
+}
+
+.action-pill-select.priority-critical {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-color: rgba(255, 255, 255, 0.55);
+  color: var(--risk-high-text);
+  border-color: var(--risk-high-border);
+}
+
+:root[data-theme="dark"] .action-pill-select {
+  background-color: rgba(11, 18, 32, 0.28);
+}
+
+:root[data-theme="dark"] .action-pill-select.priority-high {
+  color: #fdba74;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.action-pill-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.action-pill-select:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .empty-card {
@@ -2200,6 +2376,15 @@ textarea:focus-visible {
   .topbar-right,
   .detail-side-meta {
     align-items: flex-start;
+  }
+
+  .action-row-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-row-controls {
+    justify-content: flex-start;
   }
 
   .two-up,

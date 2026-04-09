@@ -8,8 +8,6 @@ import {
   mergeClients,
   unmergeClient,
   updateActionItem,
-  updateClientNotes,
-  updateClientOwner,
 } from "../lib/api";
 import { toMessage } from "../lib/errors";
 import { useAppLayoutContext } from "../components/AppLayout";
@@ -64,11 +62,8 @@ export default function ClientPage() {
   const navigate = useNavigate();
   const { dashboard, refreshDashboard } = useAppLayoutContext();
   const client = dashboard?.clients.find((item) => item.id === clientId) ?? null;
-  const teamMembers = dashboard?.teamMembers ?? [];
   const { detail, setDetail, isLoading, detailError, setDetailError, loadDetail } = useClientDetail(clientId);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
-  const [isSavingOwner, setIsSavingOwner] = useState(false);
   const [updatingActionIds, setUpdatingActionIds] = useState<string[]>([]);
 
   // Dismiss confirmation
@@ -117,34 +112,6 @@ export default function ClientPage() {
       setDetailError(toMessage(error));
     } finally {
       setIsDismissing(false);
-    }
-  }
-
-  async function handleSaveNotes(notes: string) {
-    if (!clientId) return;
-    setIsSavingNotes(true);
-    try {
-      await updateClientNotes(clientId, notes);
-      await refreshDashboard();
-    } catch (error) {
-      setDetailError(toMessage(error));
-      throw error;
-    } finally {
-      setIsSavingNotes(false);
-    }
-  }
-
-  async function handleSaveOwner(ownerTeamMemberId: string | null) {
-    if (!clientId) return;
-    setIsSavingOwner(true);
-    try {
-      await updateClientOwner(clientId, ownerTeamMemberId);
-      await refreshDashboard();
-    } catch (error) {
-      setDetailError(toMessage(error));
-      throw error;
-    } finally {
-      setIsSavingOwner(false);
     }
   }
 
@@ -242,6 +209,7 @@ export default function ClientPage() {
           : prev,
       );
       await refreshDashboard();
+      await loadDetail();
     } catch (error) {
       setDetailError(toMessage(error));
       throw error;
@@ -287,13 +255,8 @@ export default function ClientPage() {
       <ClientHero
         client={client}
         isDismissing={isDismissing}
-        isSavingNotes={isSavingNotes}
-        isSavingOwner={isSavingOwner}
         onDismiss={() => setShowDismissConfirm(true)}
         onOpenMergeDialog={() => void openMergeDialog()}
-        onSaveNotes={(notes) => handleSaveNotes(notes)}
-        onSaveOwner={(ownerTeamMemberId) => handleSaveOwner(ownerTeamMemberId)}
-        teamMembers={teamMembers}
       />
 
       <ClientKpis client={client} />

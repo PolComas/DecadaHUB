@@ -270,15 +270,30 @@ export async function updateActionItem(
     payload.priority = updates.priority as ActionPriority;
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("action_items")
     .update(payload)
-    .eq("id", actionId)
-    .select("id, client_id, title, details, due_at, status, priority, meeting_id")
-    .single();
+    .eq("id", actionId);
 
   if (error) throw error;
-  return data as ActionItem;
+
+  const { data: persisted, error: fetchError } = await supabase
+    .from("action_items")
+    .select("id, client_id, title, details, due_at, status, priority, meeting_id")
+    .eq("id", actionId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  if (updates.status && persisted.status !== updates.status) {
+    throw new Error("No se ha podido guardar el nuevo estado de la acción.");
+  }
+
+  if (updates.priority && persisted.priority !== updates.priority) {
+    throw new Error("No se ha podido guardar la nueva prioridad de la acción.");
+  }
+
+  return persisted as ActionItem;
 }
 
 export async function fetchMergeCandidates(excludeId: string): Promise<MergeCandidate[]> {

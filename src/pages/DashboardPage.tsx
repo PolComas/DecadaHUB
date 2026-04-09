@@ -41,14 +41,12 @@ export default function DashboardPage() {
       `cartera-${currentDateStamp()}.csv`,
       [
         { header: "Cliente", value: (client) => client.client_name },
-        { header: "Responsable", value: (client) => client.owner_name ?? "" },
         { header: "Riesgo", value: (client) => client.risk_score_heuristic },
         { header: "Respuesta equipo (h)", value: (client) => client.avg_team_response_hours_30d },
         { header: "Hilos 72h+", value: (client) => client.stalled_threads_gt_72h },
         { header: "Acciones abiertas", value: (client) => client.open_actions },
         { header: "Acciones vencidas", value: (client) => client.overdue_actions },
         { header: "Señales negativas 30d", value: (client) => client.negative_signals_30d },
-        { header: "Notas", value: (client) => client.notes ?? "" },
       ],
       displayClients,
     );
