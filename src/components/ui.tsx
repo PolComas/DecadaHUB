@@ -108,7 +108,13 @@ export function TimelineRow({ event }: { event: TimelineEvent }) {
   );
 }
 
-export function InsightCard({ insight }: { insight: AiInsight }) {
+export function InsightCard({
+  insight,
+  footerAction,
+}: {
+  insight: AiInsight;
+  footerAction?: ReactNode;
+}) {
   const topics = Array.isArray(insight.topics) ? insight.topics : [];
   const risks = Array.isArray(insight.risks) ? insight.risks : [];
   const suggestions = Array.isArray(insight.action_suggestions) ? insight.action_suggestions : [];
@@ -153,6 +159,7 @@ export function InsightCard({ insight }: { insight: AiInsight }) {
       <div className="list-footer">
         <span>{insight.entity_type}</span>
         <span>{formatDateTime(insight.analyzed_at)}</span>
+        {footerAction}
       </div>
     </article>
   );

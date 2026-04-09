@@ -3,11 +3,18 @@ import { CountChip, EmptyState, SkeletonBlock } from "../../ui";
 import type { Transcript } from "../../../types";
 
 interface TranscriptsTabProps {
+  deletingTranscriptId: string | null;
   transcripts: Transcript[];
   isLoading: boolean;
+  onDeleteTranscript: (transcriptId: string, title: string) => void;
 }
 
-export default function TranscriptsTab({ transcripts, isLoading }: TranscriptsTabProps) {
+export default function TranscriptsTab({
+  deletingTranscriptId,
+  transcripts,
+  isLoading,
+  onDeleteTranscript,
+}: TranscriptsTabProps) {
   return (
     <>
       <div className="section-header">
@@ -19,15 +26,35 @@ export default function TranscriptsTab({ transcripts, isLoading }: TranscriptsTa
       ) : transcripts.length ? (
         <div className="stack-list">
           {transcripts.map((transcript) => (
-            <a className="list-card link-card" href={transcript.document_url ?? undefined} key={transcript.id} rel="noreferrer" target="_blank">
+            <div className="list-card" key={transcript.id}>
               <strong>{transcript.file_name ?? "Transcripción"}</strong>
               <p>{transcript.content_text.slice(0, 160)}...</p>
-              <div className="list-footer">
+              <div className="list-footer transcript-footer">
                 <span>{formatDateTime(transcript.transcript_at)}</span>
                 <span>{transcript.language_code ?? "—"}</span>
-                <span>{transcript.document_url ? "Abrir documento" : "Sin enlace"}</span>
+                {transcript.document_url ? (
+                  <a
+                    className="text-link transcript-link"
+                    href={transcript.document_url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Abrir documento
+                  </a>
+                ) : (
+                  <span>Sin enlace</span>
+                )}
+                <button
+                  className="delete-btn"
+                  disabled={deletingTranscriptId === transcript.id}
+                  onClick={() => onDeleteTranscript(transcript.id, transcript.file_name ?? "Transcripción")}
+                  title="Eliminar transcripción"
+                  type="button"
+                >
+                  {deletingTranscriptId === transcript.id ? "Eliminando..." : "🗑 Eliminar"}
+                </button>
               </div>
-            </a>
+            </div>
           ))}
         </div>
       ) : (

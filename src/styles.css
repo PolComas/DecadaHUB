@@ -690,6 +690,14 @@ textarea:focus-visible {
   box-shadow: var(--shadow-xs);
 }
 
+.inline-select.compact-select {
+  min-height: 28px;
+  padding: 4px 10px;
+  background: var(--surface-muted);
+  box-shadow: none;
+  font-size: 12px;
+}
+
 .theme-select {
   appearance: none;
   -webkit-appearance: none;
@@ -1500,6 +1508,19 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+.action-delete-btn {
+  padding: 4px 10px;
+  background: var(--surface-muted);
+  border-color: var(--separator-light);
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.action-delete-btn:hover {
+  background: var(--separator);
+  color: var(--text-primary);
+}
+
 .action-row-saving {
   color: var(--text-tertiary);
   font-size: 11px;
@@ -1613,6 +1634,26 @@ textarea:focus-visible {
 .action-pill-select:disabled {
   opacity: 0.7;
   cursor: wait;
+}
+
+.thread-card.open {
+  background: var(--accent-soft);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.thread-card.waiting_client {
+  background: var(--risk-medium-bg);
+  border-color: var(--risk-medium-border);
+}
+
+.thread-card.waiting_team {
+  background: var(--risk-high-bg);
+  border-color: var(--risk-high-border);
+}
+
+.thread-card.closed {
+  background: var(--surface-muted);
+  border-color: var(--separator);
 }
 
 .empty-card {
@@ -2091,6 +2132,22 @@ textarea:focus-visible {
   background: var(--surface-muted);
 }
 
+.list-card-wrapper .thread-card.open:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.list-card-wrapper .thread-card.waiting_client:hover {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.list-card-wrapper .thread-card.waiting_team:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.list-card-wrapper .thread-card.closed:hover {
+  background: var(--separator);
+}
+
 .delete-btn {
   display: inline-flex;
   align-items: center;
@@ -2106,7 +2163,9 @@ textarea:focus-visible {
   border: none;
 }
 
-.list-card-wrapper:hover .delete-btn {
+.list-card-wrapper:hover .delete-btn,
+.list-card:hover .delete-btn,
+.insight-card:hover .delete-btn {
   opacity: 1;
 }
 
@@ -2120,9 +2179,82 @@ textarea:focus-visible {
   flex: 0 0 auto;
 }
 
+.thread-footer .delete-btn,
+.meeting-footer .delete-btn,
+.transcript-footer .delete-btn,
+.list-footer .delete-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.thread-footer,
+.meeting-footer,
+.transcript-footer {
+  align-items: center;
+  width: 100%;
+}
+
 .delete-btn:hover {
   background: var(--risk-high-bg);
   color: var(--risk-high);
+}
+
+.thread-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-height: 24px;
+  padding: 0 20px 0 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background-position:
+    calc(100% - 10px) calc(50% - 1px),
+    calc(100% - 6px) calc(50% - 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.thread-status-select.waiting_team,
+.thread-status-select.client_to_team {
+  background-color: var(--risk-high-bg);
+  color: var(--risk-high-text);
+  border-color: var(--risk-high-border);
+}
+
+.thread-status-select.waiting_client,
+.thread-status-select.team_to_client {
+  background-color: var(--risk-medium-bg);
+  color: var(--risk-medium-text);
+  border-color: var(--risk-medium-border);
+}
+
+.thread-status-select.open,
+.thread-status-select.closed {
+  background-color: var(--surface-muted);
+  color: var(--text-secondary);
+  border-color: var(--separator-light);
+}
+
+.thread-status-select.waiting_team,
+.thread-status-select.waiting_client,
+.thread-status-select.open,
+.thread-status-select.closed {
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+}
+
+.thread-status-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.transcript-link {
+  white-space: nowrap;
 }
 
 /* ── Detail modal (wide) ──────────────────────────── */

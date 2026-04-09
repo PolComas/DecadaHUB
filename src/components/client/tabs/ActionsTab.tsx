@@ -8,8 +8,10 @@ import type { ActionItem, ActionPriority, ActionStatus } from "../../../types";
 interface ActionsTabProps {
   actions: ActionItem[];
   clientName: string;
+  deletingActionId: string | null;
   isLoading: boolean;
   updatingActionIds: string[];
+  onDeleteAction: (actionId: string, title: string) => void;
   onUpdateAction: (
     actionId: string,
     updates: Partial<Pick<ActionItem, "status" | "priority">>,
@@ -44,8 +46,10 @@ function priorityTone(priority: ActionPriority) {
 export default function ActionsTab({
   actions,
   clientName,
+  deletingActionId,
   isLoading,
   updatingActionIds,
+  onDeleteAction,
   onUpdateAction,
 }: ActionsTabProps) {
   const { slice, page, totalPages, hasNext, hasPrev, setPage } = usePagination(actions, 10);
@@ -129,6 +133,16 @@ export default function ActionsTab({
                           </option>
                         ))}
                       </select>
+
+                      <button
+                        className="ghost-button action-delete-btn"
+                        disabled={deletingActionId === action.id}
+                        onClick={() => onDeleteAction(action.id, action.title)}
+                        title="Eliminar acción"
+                        type="button"
+                      >
+                        {deletingActionId === action.id ? "Eliminando..." : "Eliminar"}
+                      </button>
                     </div>
                   </div>
                 </article>

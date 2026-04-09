@@ -12,11 +12,18 @@ const RESPONSE_COLORS: Record<string, string> = {
 };
 
 interface MeetingsTabProps {
+  deletingMeetingId: string | null;
   meetings: Meeting[];
   isLoading: boolean;
+  onDeleteMeeting: (meetingId: string, title: string) => void;
 }
 
-export default function MeetingsTab({ meetings, isLoading }: MeetingsTabProps) {
+export default function MeetingsTab({
+  deletingMeetingId,
+  meetings,
+  isLoading,
+  onDeleteMeeting,
+}: MeetingsTabProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<MeetingAttendee[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
@@ -51,7 +58,7 @@ export default function MeetingsTab({ meetings, isLoading }: MeetingsTabProps) {
             <div className="list-card" key={meeting.id}>
               <strong>{meeting.title}</strong>
               <p>{meeting.description ?? "Sin descripción."}</p>
-              <div className="list-footer">
+              <div className="list-footer meeting-footer">
                 <span>{formatDateTime(meeting.start_at)}</span>
                 <span>{durationMinutes(meeting.start_at, meeting.end_at)}</span>
                 <span>{statusLabel(meeting.status)}</span>
@@ -65,6 +72,15 @@ export default function MeetingsTab({ meetings, isLoading }: MeetingsTabProps) {
                     {meeting.attendee_count} asistentes {expandedId === meeting.id ? "▾" : "▸"}
                   </button>
                 ) : null}
+                <button
+                  className="delete-btn"
+                  disabled={deletingMeetingId === meeting.id}
+                  onClick={() => onDeleteMeeting(meeting.id, meeting.title)}
+                  title="Eliminar reunión"
+                  type="button"
+                >
+                  {deletingMeetingId === meeting.id ? "Eliminando..." : "🗑 Eliminar"}
+                </button>
               </div>
               {expandedId === meeting.id ? (
                 <div className="attendee-list">

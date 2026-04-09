@@ -21,6 +21,7 @@ import type {
   TeamMember,
   TimelineEvent,
   Transcript,
+  ThreadStatus,
 } from "../types";
 import { getSupabaseClient } from "./supabase";
 
@@ -296,6 +297,53 @@ export async function updateActionItem(
   return persisted as ActionItem;
 }
 
+export async function deleteActionItem(actionId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("action_items")
+    .delete()
+    .eq("id", actionId);
+
+  if (error) throw error;
+}
+
+export async function updateThreadStatus(
+  threadId: string,
+  status: ThreadStatus,
+): Promise<EmailThread> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase
+    .from("email_threads")
+    .update({ status })
+    .eq("id", threadId);
+
+  if (error) throw error;
+
+  const { data: persisted, error: fetchError } = await supabase
+    .from("email_threads")
+    .select("id, client_id, subject, status, last_message_at, last_direction, message_count")
+    .eq("id", threadId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (persisted.status !== status) {
+    throw new Error("No se ha podido guardar el nuevo estado del hilo.");
+  }
+
+  return persisted as EmailThread;
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("email_threads")
+    .delete()
+    .eq("id", threadId);
+
+  if (error) throw error;
+}
+
 export async function fetchMergeCandidates(excludeId: string): Promise<MergeCandidate[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
@@ -399,7 +447,6 @@ export async function fetchClientDetail(clientId: string): Promise<ClientDetail>
         .select("id, client_id, entity_type, summary, sentiment_label, sentiment_score, urgency_score, complaint_flag, satisfaction_flag, needs_follow_up, topics, risks, action_suggestions, analyzed_at")
         .eq("client_id", clientId)
         .order("analyzed_at", { ascending: false })
-        .limit(8)
         .returns<AiInsight[]>(),
       supabase
         .from("transcripts")
@@ -467,6 +514,36 @@ export async function deleteEmail(messageId: string): Promise<void> {
     .delete()
     .eq("id", messageId);
   if (msgError) throw msgError;
+}
+
+export async function deleteInsight(insightId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("ai_insights")
+    .delete()
+    .eq("id", insightId);
+
+  if (error) throw error;
+}
+
+export async function deleteMeeting(meetingId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("meetings")
+    .delete()
+    .eq("id", meetingId);
+
+  if (error) throw error;
+}
+
+export async function deleteTranscript(transcriptId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("transcripts")
+    .delete()
+    .eq("id", transcriptId);
+
+  if (error) throw error;
 }
 
 export async function fetchEmailFull(messageId: string): Promise<EmailMessageFull> {

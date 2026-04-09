@@ -1,6 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  deleteActionItem,
   deleteEmail,
+  deleteInsight,
+  deleteMeeting,
+  deleteThread,
+  deleteTranscript,
   dismissClient,
   fetchEmailFull,
   fetchMergeCandidates,
@@ -8,6 +13,7 @@ import {
   mergeClients,
   unmergeClient,
   updateActionItem,
+  updateThreadStatus,
 } from "../lib/api";
 import { toMessage } from "../lib/errors";
 import { useAppLayoutContext } from "../components/AppLayout";
@@ -15,7 +21,7 @@ import { EmptyState } from "../components/ui";
 import { useClientDetail } from "../hooks/useClientDetail";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useEffect, useState } from "react";
-import type { EmailMessageFull, MergeCandidate } from "../types";
+import type { EmailMessageFull, MergeCandidate, ThreadStatus } from "../types";
 
 import ClientHero from "../components/client/ClientHero";
 import ClientKpis from "../components/client/ClientKpis";
@@ -32,6 +38,7 @@ import MeetingsTab from "../components/client/tabs/MeetingsTab";
 import TranscriptsTab from "../components/client/tabs/TranscriptsTab";
 
 type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "meetings" | "transcripts";
+type DeleteTargetKind = "email" | "insight" | "action" | "thread" | "meeting" | "transcript";
 
 const TAB_CONFIG: { key: DetailTab; label: string }[] = [
   { key: "timeline", label: "Cronología" },
@@ -65,6 +72,7 @@ export default function ClientPage() {
   const { detail, setDetail, isLoading, detailError, setDetailError, loadDetail } = useClientDetail(clientId);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
   const [updatingActionIds, setUpdatingActionIds] = useState<string[]>([]);
+  const [updatingThreadIds, setUpdatingThreadIds] = useState<string[]>([]);
 
   // Dismiss confirmation
   const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -91,7 +99,11 @@ export default function ClientPage() {
   const [threadDetailLoading, setThreadDetailLoading] = useState(false);
 
   // Delete confirmation
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; subject: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    kind: DeleteTargetKind;
+    label: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -178,16 +190,35 @@ export default function ClientPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await deleteEmail(deleteTarget.id);
-      setDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              messages: prev.messages.filter((m) => m.id !== deleteTarget.id),
-              timeline: prev.timeline.filter((e) => e.source_id !== deleteTarget.id),
-            }
-          : prev,
-      );
+      switch (deleteTarget.kind) {
+        case "email":
+          await deleteEmail(deleteTarget.id);
+          if (emailDetail?.id === deleteTarget.id) {
+            setEmailDetail(null);
+            setEmailDetailLoading(false);
+          }
+          break;
+        case "insight":
+          await deleteInsight(deleteTarget.id);
+          break;
+        case "action":
+          await deleteActionItem(deleteTarget.id);
+          break;
+        case "thread":
+          await deleteThread(deleteTarget.id);
+          setThreadMessages(null);
+          setThreadDetailLoading(false);
+          break;
+        case "meeting":
+          await deleteMeeting(deleteTarget.id);
+          break;
+        case "transcript":
+          await deleteTranscript(deleteTarget.id);
+          break;
+      }
+
+      await refreshDashboard();
+      await loadDetail();
       setDeleteTarget(null);
     } catch (error) {
       setDetailError(toMessage(error));
@@ -215,6 +246,28 @@ export default function ClientPage() {
       throw error;
     } finally {
       setUpdatingActionIds((prev) => prev.filter((id) => id !== actionId));
+    }
+  }
+
+  async function handleUpdateThreadStatus(threadId: string, status: ThreadStatus) {
+    setUpdatingThreadIds((prev) => [...prev, threadId]);
+    try {
+      const updated = await updateThreadStatus(threadId, status);
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              threads: prev.threads.map((thread) => (thread.id === threadId ? updated : thread)),
+            }
+          : prev,
+      );
+      await refreshDashboard();
+      await loadDetail();
+    } catch (error) {
+      setDetailError(toMessage(error));
+      throw error;
+    } finally {
+      setUpdatingThreadIds((prev) => prev.filter((id) => id !== threadId));
     }
   }
 
@@ -304,22 +357,55 @@ export default function ClientPage() {
             messages={detail?.messages ?? []}
             isLoading={isLoading}
             onOpenEmail={(id) => void handleOpenEmail(id)}
-            onDeleteEmail={(id, subject) => setDeleteTarget({ id, subject })}
+            onDeleteEmail={(id, subject) => setDeleteTarget({ id, kind: "email", label: subject })}
           />
         )}
-        {activeTab === "insights" && <InsightsTab insights={detail?.insights ?? []} isLoading={isLoading} />}
+        {activeTab === "insights" && (
+          <InsightsTab
+            deletingInsightId={isDeleting && deleteTarget?.kind === "insight" ? deleteTarget.id : null}
+            insights={detail?.insights ?? []}
+            isLoading={isLoading}
+            onDeleteInsight={(id, summary) => setDeleteTarget({ id, kind: "insight", label: summary })}
+          />
+        )}
         {activeTab === "actions" && (
           <ActionsTab
             actions={detail?.actions ?? []}
             clientName={client?.client_name ?? "cliente"}
+            deletingActionId={isDeleting && deleteTarget?.kind === "action" ? deleteTarget.id : null}
             isLoading={isLoading}
             updatingActionIds={updatingActionIds}
+            onDeleteAction={(actionId, title) => setDeleteTarget({ id: actionId, kind: "action", label: title })}
             onUpdateAction={(actionId, updates) => handleUpdateAction(actionId, updates)}
           />
         )}
-        {activeTab === "threads" && <ThreadsTab threads={detail?.threads ?? []} isLoading={isLoading} onOpenThread={(id, subject) => void handleOpenThread(id, subject)} />}
-        {activeTab === "meetings" && <MeetingsTab meetings={detail?.meetings ?? []} isLoading={isLoading} />}
-        {activeTab === "transcripts" && <TranscriptsTab transcripts={detail?.transcripts ?? []} isLoading={isLoading} />}
+        {activeTab === "threads" && (
+          <ThreadsTab
+            deletingThreadId={isDeleting && deleteTarget?.kind === "thread" ? deleteTarget.id : null}
+            threads={detail?.threads ?? []}
+            isLoading={isLoading}
+            updatingThreadIds={updatingThreadIds}
+            onDeleteThread={(id, subject) => setDeleteTarget({ id, kind: "thread", label: subject })}
+            onOpenThread={(id, subject) => void handleOpenThread(id, subject)}
+            onUpdateThreadStatus={(threadId, status) => handleUpdateThreadStatus(threadId, status)}
+          />
+        )}
+        {activeTab === "meetings" && (
+          <MeetingsTab
+            deletingMeetingId={isDeleting && deleteTarget?.kind === "meeting" ? deleteTarget.id : null}
+            meetings={detail?.meetings ?? []}
+            isLoading={isLoading}
+            onDeleteMeeting={(meetingId, title) => setDeleteTarget({ id: meetingId, kind: "meeting", label: title })}
+          />
+        )}
+        {activeTab === "transcripts" && (
+          <TranscriptsTab
+            deletingTranscriptId={isDeleting && deleteTarget?.kind === "transcript" ? deleteTarget.id : null}
+            transcripts={detail?.transcripts ?? []}
+            isLoading={isLoading}
+            onDeleteTranscript={(transcriptId, title) => setDeleteTarget({ id: transcriptId, kind: "transcript", label: title })}
+          />
+        )}
       </section>
 
       {/* Modals */}
@@ -390,13 +476,24 @@ export default function ClientPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Eliminar correo"
+        title={
+          deleteTarget?.kind === "email" ? "Eliminar correo"
+            : deleteTarget?.kind === "insight" ? "Eliminar análisis"
+            : deleteTarget?.kind === "action" ? "Eliminar acción"
+            : deleteTarget?.kind === "thread" ? "Eliminar hilo"
+            : deleteTarget?.kind === "meeting" ? "Eliminar reunión"
+            : "Eliminar transcripción"
+        }
         confirmLabel="Eliminar"
         isLoading={isDeleting}
         onConfirm={() => void executeDelete()}
         onCancel={() => setDeleteTarget(null)}
       >
-        <p>¿Seguro que quieres eliminar el correo <strong>"{deleteTarget?.subject}"</strong>? Esta acción no se puede deshacer.</p>
+        <p>
+          {deleteTarget?.kind === "thread"
+            ? <>¿Seguro que quieres eliminar el hilo <strong>"{deleteTarget?.label}"</strong>? También se eliminarán sus mensajes asociados.</>
+            : <>¿Seguro que quieres eliminar <strong>"{deleteTarget?.label}"</strong>? Esta acción no se puede deshacer.</>}
+        </p>
       </ConfirmDialog>
     </>
   );
