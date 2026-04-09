@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useOutletContext } from "react-
 import AppSidebar from "./AppSidebar";
 import { fetchDashboardOverview } from "../lib/api";
 import { formatDateTime } from "../lib/formatters";
+import { toMessage } from "../lib/errors";
 import { useAuth } from "../lib/auth";
 import { initials } from "./ui";
 import type { ClientOverview, DashboardOverview } from "../types";
@@ -179,10 +180,3 @@ export function useAppLayoutContext() {
   return useOutletContext<AppLayoutContextValue>();
 }
 
-function toMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Se ha producido un error inesperado.";
-}

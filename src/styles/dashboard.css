@@ -1,0 +1,428 @@
+/* ── Page header ───────────────────────────────────── */
+.page-header {
+  padding: 4px 0 4px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.page-subtitle {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Dashboard header (replaces hero) ──────────────── */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 4px 0 4px;
+}
+
+.dashboard-header-copy h2 {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.dashboard-header-copy p {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Detail hero (client page) ─────────────────────── */
+.detail-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px;
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  background-image: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, transparent 60%);
+  border: 1px solid var(--separator);
+  box-shadow: var(--shadow-card);
+}
+
+.detail-hero-copy {
+  max-width: 760px;
+  min-width: 0;
+}
+
+.detail-breadcrumbs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.detail-breadcrumbs .topbar-link {
+  color: var(--accent-text);
+}
+
+.detail-breadcrumbs .topbar-link:hover {
+  color: var(--accent);
+}
+
+.detail-title {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-text {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  max-width: 56ch;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.detail-side-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.detail-hero .ghost-button {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+/* ── Stats grid ─────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.detail-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* ── Cards / surfaces ───────────────────────────────── */
+.metric-card,
+.card,
+.callout,
+.activity-callout,
+.auth-card {
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+}
+
+.metric-card {
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, #818cf8 100%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.metric-card:hover::before {
+  opacity: 1;
+}
+
+.metric-card:hover,
+.priority-card:hover,
+.portfolio-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.list-card:hover {
+  background: var(--card-hover);
+}
+
+.metric-card span,
+.focus-metric span,
+.context-label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.metric-card strong,
+.focus-metric strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.metric-card p,
+.focus-metric p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.list-card p,
+.activity-callout p,
+.empty-card p,
+.timeline-body p,
+.callout p,
+.auth-copy {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Callouts ───────────────────────────────────────── */
+.callout {
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.callout.error {
+  border-color: var(--risk-high-border);
+  background: var(--risk-high-bg);
+}
+
+.callout.success {
+  border-color: var(--risk-ok-border);
+  background: var(--risk-ok-bg);
+}
+
+/* ── Grid layouts ───────────────────────────────────── */
+.section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  gap: 20px;
+}
+
+.primary-column,
+.secondary-column {
+  display: grid;
+  gap: 20px;
+}
+
+.card {
+  padding: 18px 22px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.section-header.compact {
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.count-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Focus metrics ──────────────────────────────────── */
+.focus-metric {
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  background: var(--card);
+  border: 1px solid var(--separator);
+  box-shadow: var(--shadow-card);
+}
+
+.two-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.two-up-wide {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+/* ── Dashboard filters ─────────────────────────────── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--separator);
+  box-shadow: var(--shadow-xs);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--separator-light);
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+.filter-chip:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+.filter-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.filter-select {
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.filter-clear {
+  font-size: 12px;
+  padding: 4px 10px;
+  margin-left: auto;
+}
+
+/* ── Risk distribution chart ───────────────────────── */
+.risk-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.risk-chart-svg {
+  width: 120px;
+  height: 120px;
+}
+
+.risk-chart-total {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  fill: var(--text-primary);
+}
+
+.risk-chart-label {
+  font-size: 10px;
+  font-weight: 500;
+  fill: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.risk-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.risk-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.risk-chart-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

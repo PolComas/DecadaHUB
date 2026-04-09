@@ -13,6 +13,7 @@ import type {
   EmailThread,
   Mailbox,
   Meeting,
+  MeetingAttendee,
   MergeCandidate,
   MergedClient,
   TeamMember,
@@ -312,7 +313,7 @@ export async function fetchClientDetail(clientId: string): Promise<ClientDetail>
         .returns<EmailMessage[]>(),
       supabase
         .from("meetings")
-        .select("id, client_id, title, description, start_at, end_at, timezone, meeting_url, status")
+        .select("id, client_id, title, description, start_at, end_at, timezone, meeting_url, status, attendee_count")
         .eq("client_id", clientId)
         .order("start_at", { ascending: false })
         .limit(6)
@@ -326,7 +327,7 @@ export async function fetchClientDetail(clientId: string): Promise<ClientDetail>
         .returns<EmailThread[]>(),
       supabase
         .from("ai_insights")
-        .select("id, client_id, entity_type, summary, sentiment_label, sentiment_score, urgency_score, complaint_flag, satisfaction_flag, needs_follow_up, topics, risks, analyzed_at")
+        .select("id, client_id, entity_type, summary, sentiment_label, sentiment_score, urgency_score, complaint_flag, satisfaction_flag, needs_follow_up, topics, risks, action_suggestions, analyzed_at")
         .eq("client_id", clientId)
         .order("analyzed_at", { ascending: false })
         .limit(8)
@@ -422,6 +423,18 @@ export async function fetchEmailFull(messageId: string): Promise<EmailMessageFul
     ...(msgResult.data as EmailMessageFull),
     sender_email: senderResult.data?.[0]?.email ?? null,
   };
+}
+
+export async function fetchMeetingAttendees(meetingId: string): Promise<MeetingAttendee[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from("meeting_attendees")
+    .select("id, meeting_id, email, full_name, response_status, is_organizer")
+    .eq("meeting_id", meetingId)
+    .order("is_organizer", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export async function fetchThreadMessages(threadId: string): Promise<EmailMessageFull[]> {

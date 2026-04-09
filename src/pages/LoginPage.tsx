@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../lib/auth";
+import { toMessage } from "../lib/errors";
 
 type LoginView = "login" | "forgot";
 
@@ -175,17 +176,3 @@ export default function LoginPage({ envMissing = false }: { envMissing?: boolean
   );
 }
 
-function toMessage(error: unknown) {
-  if (error instanceof Error) {
-    const msg = error.message;
-    if (msg.includes("Invalid login credentials")) {
-      return "Correo electrónico o contraseña incorrectos.";
-    }
-    if (msg.includes("Email not confirmed")) {
-      return "Tu correo electrónico aún no ha sido confirmado.";
-    }
-    return msg;
-  }
-
-  return "Se ha producido un error inesperado.";
-}

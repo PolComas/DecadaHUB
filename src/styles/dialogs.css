@@ -1,0 +1,391 @@
+/* ── Merge dialog ──────────────────────────────────── */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 200ms ease;
+}
+
+.dialog {
+  width: min(100%, 480px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--separator);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: dialogSlide 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dialogSlide {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+
+.dialog-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dialog-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  font-size: 20px;
+  color: var(--text-tertiary);
+  background: transparent;
+}
+
+.dialog-close:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.dialog-description {
+  padding: 8px 20px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dialog-search {
+  margin: 12px 20px 0;
+  width: calc(100% - 40px);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13px;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.dialog-search:focus {
+  border-color: var(--accent);
+  background: var(--card);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dialog-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px 14px;
+  display: grid;
+  gap: 2px;
+  max-height: 360px;
+  scrollbar-width: thin;
+}
+
+.dialog-loading,
+.dialog-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  background: transparent;
+}
+
+.dialog-item:hover {
+  background: var(--surface-muted);
+}
+
+.dialog-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog-item .item-avatar.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+}
+
+.dialog-item-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.dialog-item-copy strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dialog-item-copy span {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-top: 1px;
+}
+
+/* ── Delete button on cards ────────────────────────── */
+.list-card-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.list-card-wrapper .list-card {
+  flex: 1;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.list-card-wrapper .list-card:hover {
+  background: var(--surface-muted);
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 150ms, background 150ms, color 150ms;
+  cursor: pointer;
+  border: none;
+}
+
+.list-card-wrapper:hover .delete-btn {
+  opacity: 1;
+}
+
+.email-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.email-footer .delete-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.delete-btn:hover {
+  background: var(--risk-high-bg);
+  color: var(--risk-high);
+}
+
+/* ── Detail modal (wide) ──────────────────────────── */
+.dialog.wide {
+  width: min(100%, 680px);
+}
+
+.dialog-body {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+  max-height: 60vh;
+  scrollbar-width: thin;
+}
+
+.email-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.email-detail-meta span {
+  background: var(--surface-muted);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.email-body-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Thread conversation in modal */
+.thread-message {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--separator-light);
+}
+
+.thread-message:last-child {
+  border-bottom: none;
+}
+
+.thread-message-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.thread-message-head strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.thread-message-head .thread-chip {
+  font-size: 11px;
+}
+
+.thread-message-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Merged clients section ───────────────────────── */
+.merged-section {
+  margin-top: 4px;
+  padding: 6px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+}
+
+.merged-section-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.merged-section-toggle h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.merged-section-toggle:hover h4 {
+  color: var(--accent-hover);
+}
+
+.merged-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--separator-light);
+  font-size: 13px;
+}
+
+.merged-item:first-child {
+  border-top: none;
+}
+
+.merged-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.merged-item-info strong {
+  font-weight: 600;
+}
+
+.merged-item-info span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.unmerge-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--card);
+  border: 1px solid var(--separator);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.unmerge-btn:hover {
+  background: var(--surface-muted);
+}
+
+/* ── Confirm dialog ───────────────────────────────── */
+.confirm-dialog {
+  width: min(100%, 400px);
+}
+
+.confirm-dialog .dialog-body {
+  padding: 12px 20px 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.confirm-actions button {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-cancel {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--separator);
+}
+
+.confirm-cancel:hover {
+  background: var(--separator);
+}
+
+.confirm-danger {
+  background: var(--risk-high);
+  color: white;
+  border: none;
+}
+
+.confirm-danger:hover {
+  background: #dc2626;
+}
+
+.confirm-accent {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.confirm-accent:hover {
+  background: var(--accent-hover);
+}

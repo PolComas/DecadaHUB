@@ -1,6 +1,9 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatCompactNumber, formatHours } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
+import DashboardFilters, { EMPTY_FILTERS, filterClients, type DashboardFilterState } from "../components/DashboardFilters";
+import RiskDistributionChart from "../components/charts/RiskDistributionChart";
 import {
   ActivityCallout,
   ClientListRow,
@@ -11,14 +14,25 @@ import {
 } from "../components/ui";
 
 export default function DashboardPage() {
-  const { dashboard, isBooting, globalError } = useAppLayoutContext();
+  const { dashboard, isBooting, globalError, refreshDashboard } = useAppLayoutContext();
+  const [filters, setFilters] = useState<DashboardFilterState>(EMPTY_FILTERS);
+
   const summary = dashboard?.summary;
-  const topRiskClients = dashboard?.clients.slice(0, 3) ?? [];
-  const slowestTeamReplies =
-    dashboard?.clients
+  const allClients = dashboard?.clients ?? [];
+
+  const displayClients = useMemo(
+    () => filterClients(allClients, filters),
+    [allClients, filters],
+  );
+
+  const topRiskClients = displayClients.slice(0, 3);
+  const slowestTeamReplies = useMemo(
+    () => displayClients
       .filter((client) => client.avg_team_response_hours_30d > 0)
       .sort((a, b) => b.avg_team_response_hours_30d - a.avg_team_response_hours_30d)
-      .slice(0, 4) ?? [];
+      .slice(0, 4),
+    [displayClients],
+  );
 
   return (
     <>
@@ -68,7 +82,12 @@ export default function DashboardPage() {
         <section className="callout error">
           <strong>No se ha podido cargar el panel.</strong>
           <p>{globalError}</p>
+          <button className="ghost-button" onClick={() => void refreshDashboard()} style={{ marginTop: 8 }} type="button">Reintentar</button>
         </section>
+      ) : null}
+
+      {!isBooting && allClients.length > 0 ? (
+        <DashboardFilters clients={allClients} filters={filters} onChange={setFilters} />
       ) : null}
 
       <section className="two-up two-up-wide">
@@ -114,33 +133,34 @@ export default function DashboardPage() {
         <section className="card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Seguimiento de respuestas</p>
-              <h3>Tiempo de respuesta</h3>
+              <p className="eyebrow">Distribución de riesgo</p>
+              <h3>Estado de la cartera</h3>
             </div>
           </div>
 
           {isBooting ? (
-            <div className="stack-list">
-              <SkeletonBlock />
-              <SkeletonBlock />
-            </div>
-          ) : slowestTeamReplies.length ? (
-            <div className="stack-list">
-              {slowestTeamReplies.map((client) => (
-                <ActivityCallout
-                  body={`${client.stalled_threads_gt_72h} hilos estancados, ${client.open_actions} acciones abiertas, ${client.negative_signals_30d} señales neg.`}
-                  key={client.id}
-                  title={`${client.client_name} · ${formatHours(client.avg_team_response_hours_30d)}`}
-                  tone={client.avg_team_response_hours_30d > 24 ? "warning" : "default"}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              message="Cuando haya datos de respuesta, aparecerán aquí."
-              title="Sin datos"
-            />
-          )}
+            <SkeletonBlock tall />
+          ) : displayClients.length ? (
+            <RiskDistributionChart clients={displayClients} />
+          ) : null}
+
+          {!isBooting && slowestTeamReplies.length ? (
+            <>
+              <div className="section-header compact" style={{ marginTop: 14 }}>
+                <h3>Respuestas más lentas</h3>
+              </div>
+              <div className="stack-list">
+                {slowestTeamReplies.map((client) => (
+                  <ActivityCallout
+                    body={`${client.stalled_threads_gt_72h} hilos estancados, ${client.open_actions} acciones abiertas, ${client.negative_signals_30d} señales neg.`}
+                    key={client.id}
+                    title={`${client.client_name} · ${formatHours(client.avg_team_response_hours_30d)}`}
+                    tone={client.avg_team_response_hours_30d > 24 ? "warning" : "default"}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
         </section>
       </section>
 
@@ -148,7 +168,7 @@ export default function DashboardPage() {
         <div className="section-header">
           <div>
             <p className="eyebrow">Cartera</p>
-            <h3>Todos los clientes</h3>
+            <h3>Todos los clientes ({displayClients.length})</h3>
           </div>
         </div>
 
@@ -158,7 +178,7 @@ export default function DashboardPage() {
             <SkeletonBlock />
             <SkeletonBlock />
           </div>
-        ) : dashboard?.clients.length ? (
+        ) : displayClients.length ? (
           <div className="portfolio-table">
             <div className="portfolio-header">
               <span>Cliente</span>
@@ -168,14 +188,14 @@ export default function DashboardPage() {
               <span>Acciones</span>
               <span>Señales neg.</span>
             </div>
-            {dashboard.clients.map((client) => (
+            {displayClients.map((client) => (
               <ClientListRow client={client} key={client.id} />
             ))}
           </div>
         ) : (
           <EmptyState
-            message="Carga datos para ver la cartera."
-            title="Sin clientes"
+            message="Ningún cliente coincide con los filtros aplicados."
+            title="Sin resultados"
           />
         )}
       </section>

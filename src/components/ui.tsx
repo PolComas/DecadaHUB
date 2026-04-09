@@ -111,6 +111,7 @@ export function TimelineRow({ event }: { event: TimelineEvent }) {
 export function InsightCard({ insight }: { insight: AiInsight }) {
   const topics = Array.isArray(insight.topics) ? insight.topics : [];
   const risks = Array.isArray(insight.risks) ? insight.risks : [];
+  const suggestions = Array.isArray(insight.action_suggestions) ? insight.action_suggestions : [];
 
   return (
     <article className={`insight-card ${insight.sentiment_label ?? "neutral"}`}>
@@ -120,8 +121,8 @@ export function InsightCard({ insight }: { insight: AiInsight }) {
           <h4>{insight.summary ?? "Sin resumen generado"}</h4>
         </div>
         <div className="insight-scores">
-          <span>Urgencia {formatScore(insight.urgency_score)}</span>
-          <span>Tono {formatScore(insight.sentiment_score)}</span>
+          <ScoreBar label="Urgencia" value={insight.urgency_score} mode="urgency" />
+          <ScoreBar label="Tono" value={insight.sentiment_score} mode="sentiment" />
         </div>
       </div>
 
@@ -129,23 +130,54 @@ export function InsightCard({ insight }: { insight: AiInsight }) {
         {insight.complaint_flag ? <span className="chip complaint">Queja</span> : null}
         {insight.satisfaction_flag ? <span className="chip satisfaction">Satisfacción</span> : null}
         {insight.needs_follow_up ? <span className="chip follow-up">Seguimiento</span> : null}
-        {topics.slice(0, 3).map((topic) => (
+        {topics.map((topic) => (
           <span className="chip topic" key={String(topic)}>
             {String(topic)}
           </span>
         ))}
-        {risks.slice(0, 2).map((risk) => (
+        {risks.map((risk) => (
           <span className="chip risk" key={String(risk)}>
             {String(risk)}
           </span>
         ))}
       </div>
 
+      {suggestions.length > 0 ? (
+        <ul className="insight-suggestions">
+          {suggestions.map((s, i) => (
+            <li key={i}>{typeof s === "object" && s !== null && "text" in s ? String((s as { text: string }).text) : String(s)}</li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="list-footer">
         <span>{insight.entity_type}</span>
         <span>{formatDateTime(insight.analyzed_at)}</span>
       </div>
     </article>
+  );
+}
+
+export function ScoreBar({ label, value, mode }: { label: string; value: number | null; mode: "sentiment" | "urgency" }) {
+  if (value === null || Number.isNaN(value)) {
+    return <span>{label} —</span>;
+  }
+
+  const clamped = Math.max(0, Math.min(1, value));
+  let color: string;
+  if (mode === "urgency") {
+    color = clamped > 0.66 ? "var(--risk-high)" : clamped > 0.33 ? "var(--risk-medium)" : "var(--risk-ok)";
+  } else {
+    color = clamped > 0.66 ? "var(--risk-ok)" : clamped > 0.33 ? "var(--risk-medium)" : "var(--risk-high)";
+  }
+
+  return (
+    <span className="score-bar-wrapper" title={`${label}: ${clamped.toFixed(2)}`}>
+      <span className="score-bar-label">{label}</span>
+      <span className="score-bar">
+        <span className="score-bar-fill" style={{ width: `${clamped * 100}%`, background: color }} />
+      </span>
+    </span>
   );
 }
 

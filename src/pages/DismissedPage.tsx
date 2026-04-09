@@ -4,6 +4,7 @@ import { fetchDismissedClients, restoreClient } from "../lib/api";
 import { formatDateTime } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
 import { EmptyState, initials, avatarTone } from "../components/ui";
+import ConfirmDialog from "../components/ConfirmDialog";
 import type { DismissedClient } from "../types";
 
 export default function DismissedPage() {
@@ -12,6 +13,7 @@ export default function DismissedPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<DismissedClient | null>(null);
 
   useEffect(() => {
     void load();
@@ -30,14 +32,14 @@ export default function DismissedPage() {
     }
   }
 
-  async function handleRestore(client: DismissedClient) {
-    if (!window.confirm(`¿Restaurar "${client.name}"? Volverá a ser visible en el panel.`)) return;
-
-    setRestoringId(client.id);
+  async function executeRestore() {
+    if (!restoreTarget) return;
+    setRestoringId(restoreTarget.id);
     try {
-      await restoreClient(client.id);
-      setClients((prev) => prev.filter((c) => c.id !== client.id));
+      await restoreClient(restoreTarget.id);
+      setClients((prev) => prev.filter((c) => c.id !== restoreTarget.id));
       await refreshDashboard();
+      setRestoreTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al restaurar el cliente.");
     } finally {
@@ -65,6 +67,7 @@ export default function DismissedPage() {
         <section className="callout error">
           <strong>Error</strong>
           <p>{error}</p>
+          <button className="ghost-button" onClick={() => void load()} style={{ marginTop: 8 }} type="button">Reintentar</button>
         </section>
       )}
 
@@ -100,7 +103,7 @@ export default function DismissedPage() {
                   <button
                     className="restore-button"
                     disabled={restoringId === client.id}
-                    onClick={() => void handleRestore(client)}
+                    onClick={() => setRestoreTarget(client)}
                     type="button"
                   >
                     {restoringId === client.id ? "Restaurando..." : "Restaurar"}
@@ -111,6 +114,18 @@ export default function DismissedPage() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={!!restoreTarget}
+        title="Restaurar cliente"
+        confirmLabel="Restaurar"
+        confirmTone="accent"
+        isLoading={restoringId !== null}
+        onConfirm={() => void executeRestore()}
+        onCancel={() => setRestoreTarget(null)}
+      >
+        <p>¿Restaurar <strong>"{restoreTarget?.name}"</strong>? Volverá a ser visible en el panel.</p>
+      </ConfirmDialog>
     </>
   );
 }

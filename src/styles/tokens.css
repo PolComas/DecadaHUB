@@ -1,0 +1,78 @@
+/* ── Design tokens ──────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #f4f5f9;
+  --card: #ffffff;
+  --card-hover: #fafbff;
+  --sidebar-bg: #131521;
+  --sidebar-text: rgba(255, 255, 255, 0.55);
+  --sidebar-text-bright: rgba(255, 255, 255, 0.95);
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-active: rgba(99, 102, 241, 0.18);
+  --sidebar-active-text: #a5b4fc;
+  --sidebar-section: rgba(255, 255, 255, 0.3);
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --surface-muted: #f0f1f5;
+  --surface-warm: #fafafa;
+  --surface-elevated: #ffffff;
+
+  /* Brand */
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-soft: rgba(99, 102, 241, 0.07);
+  --accent-text: #4338ca;
+  --accent-glow: rgba(99, 102, 241, 0.12);
+
+  /* Text */
+  --text-primary: #0f1118;
+  --text-secondary: #5f6578;
+  --text-tertiary: #9098a9;
+
+  /* Borders */
+  --separator: #e2e4ea;
+  --separator-light: #eef0f4;
+
+  /* Risk / status */
+  --risk-high: #ef4444;
+  --risk-high-bg: #fef2f2;
+  --risk-high-border: #fecaca;
+  --risk-medium: #f59e0b;
+  --risk-medium-bg: #fffbeb;
+  --risk-medium-border: #fde68a;
+  --risk-ok: #10b981;
+  --risk-ok-bg: #ecfdf5;
+  --risk-ok-border: #a7f3d0;
+
+  /* Shadows — layered for depth */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 4px 16px rgba(99, 102, 241, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Typography */
+  --font-display: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
+}

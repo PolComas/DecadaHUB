@@ -98,6 +98,16 @@ export interface Meeting {
   timezone: string | null;
   meeting_url: string | null;
   status: string;
+  attendee_count: number | null;
+}
+
+export interface MeetingAttendee {
+  id: string;
+  meeting_id: string;
+  email: string | null;
+  full_name: string | null;
+  response_status: string | null;
+  is_organizer: boolean;
 }
 
 export interface EmailThread {
@@ -123,6 +133,7 @@ export interface AiInsight {
   needs_follow_up: boolean;
   topics: unknown;
   risks: unknown;
+  action_suggestions: unknown;
   analyzed_at: string;
 }
 
