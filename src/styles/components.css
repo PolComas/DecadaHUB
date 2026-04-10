@@ -117,12 +117,18 @@
 }
 
 .priority-card-head,
-.insight-head,
 .list-title-line,
 .timeline-headline {
   display: flex;
   justify-content: space-between;
   gap: 10px;
+}
+
+.insight-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px 14px;
 }
 
 .priority-card-head-right {
@@ -306,11 +312,48 @@
   border-color: var(--risk-ok-border);
 }
 
+.insight-card.neutral {
+  background: var(--surface-muted);
+  border-color: var(--separator);
+}
+
+.insight-card.mixed {
+  background: var(--accent-soft);
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
 .insight-card h4 {
-  margin-top: 6px;
+  margin-top: 0;
   line-height: 1.45;
   font-size: 14px;
   font-weight: 600;
+}
+
+.insight-copy {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.insight-side {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.insight-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.insight-meta {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .chip-row {
@@ -318,6 +361,10 @@
   flex-wrap: wrap;
   gap: 5px;
   margin: 8px 0 6px;
+}
+
+.insight-chip-row {
+  margin: 0 0 0 2px;
 }
 
 .chip,
@@ -330,6 +377,38 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.01em;
+}
+
+.insight-chip-row .chip {
+  padding-left: 5px;
+  padding-right: 7px;
+}
+
+.insight-sentiment {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.insight-sentiment.positive {
+  color: var(--risk-ok-text);
+}
+
+.insight-sentiment.neutral {
+  color: var(--text-tertiary);
+}
+
+.insight-sentiment.mixed {
+  color: var(--accent-text);
+}
+
+.insight-sentiment.negative {
+  color: var(--risk-high-text);
+}
+
+.insight-delete-btn {
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
 .chip.complaint,
@@ -908,4 +987,216 @@
 .delete-btn:hover {
   background: var(--risk-high-bg);
   color: var(--risk-high);
+}
+
+.client-detail-page .timeline,
+.client-detail-page .stack-list {
+  gap: 5px;
+}
+
+.client-detail-page .timeline-row {
+  gap: 12px;
+}
+
+.client-detail-page .timeline-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 7px;
+}
+
+.client-detail-page .timeline-body {
+  padding-bottom: 10px;
+}
+
+.client-detail-page .timeline-headline strong {
+  font-size: 13px;
+}
+
+.client-detail-page .timeline-headline span,
+.client-detail-page .timeline-meta {
+  font-size: 11px;
+}
+
+.client-detail-page .timeline-body p {
+  margin: 3px 0 5px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.client-detail-page .list-card,
+.client-detail-page .insight-card,
+.client-detail-page .empty-card {
+  padding: 10px 14px;
+}
+
+.client-detail-page .list-card strong,
+.client-detail-page .insight-card h4 {
+  font-size: 13px;
+}
+
+.client-detail-page .list-card p,
+.client-detail-page .insight-card h4 + p,
+.client-detail-page .insight-suggestions,
+.client-detail-page .empty-card p {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.client-detail-page .chip-row {
+  gap: 4px;
+  margin: 7px 0 5px;
+}
+
+.client-detail-page .chip,
+.client-detail-page .thread-chip {
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+.client-detail-page .list-title-line,
+.client-detail-page .timeline-headline,
+.client-detail-page .insight-head {
+  gap: 8px;
+}
+
+.client-detail-page .insight-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.client-detail-page .insight-side {
+  gap: 4px;
+}
+
+.client-detail-page .insight-meta-row {
+  gap: 5px 8px;
+}
+
+.client-detail-page .insight-meta {
+  font-size: 10px;
+}
+
+.client-detail-page .list-footer,
+.client-detail-page .insight-scores,
+.client-detail-page .timeline-meta {
+  gap: 4px 8px;
+  font-size: 11px;
+}
+
+.client-detail-page .score-bar-wrapper {
+  gap: 5px;
+}
+
+.client-detail-page .insight-sentiment {
+  font-size: 10px;
+}
+
+.client-detail-page .score-bar-label {
+  font-size: 10px;
+}
+
+.client-detail-page .score-bar {
+  width: 34px;
+  height: 5px;
+}
+
+.client-detail-page .insight-chip-row {
+  margin: 0 0 0 1px;
+}
+
+.client-detail-page .insight-chip-row .chip {
+  padding-left: 4px;
+  padding-right: 6px;
+}
+
+.client-detail-page .delete-btn {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+.client-detail-page .thread-status-section {
+  margin-bottom: 10px;
+}
+
+.client-detail-page .thread-status-bar {
+  height: 7px;
+}
+
+.client-detail-page .thread-status-legend {
+  gap: 5px 10px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.client-detail-page .thread-status-dot {
+  width: 7px;
+  height: 7px;
+}
+
+.client-detail-page .action-row {
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.client-detail-page .action-row-header {
+  gap: 10px;
+}
+
+.client-detail-page .action-row-copy {
+  gap: 3px;
+}
+
+.client-detail-page .action-row-copy strong {
+  font-size: 13px;
+}
+
+.client-detail-page .action-row-copy p {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.client-detail-page .action-row-controls {
+  gap: 6px;
+}
+
+.client-detail-page .action-pill-select {
+  min-height: 26px;
+  padding: 0 22px 0 9px;
+  font-size: 10px;
+}
+
+.client-detail-page .action-delete-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.client-detail-page .thread-status-select {
+  min-height: 22px;
+  padding: 0 18px 0 7px;
+  font-size: 10px;
+}
+
+.client-detail-page .attendee-list {
+  margin-top: 8px;
+  padding-top: 8px;
+  gap: 3px;
+}
+
+.client-detail-page .attendee-row {
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.client-detail-page .attendee-status,
+.client-detail-page .attendee-loading {
+  font-size: 11px;
+}
+
+.client-detail-page .pagination-bar {
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.client-detail-page .pagination-info {
+  font-size: 12px;
 }

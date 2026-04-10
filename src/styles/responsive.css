@@ -87,7 +87,6 @@
   }
 
   .priority-card-head,
-  .insight-head,
   .list-title-line,
   .timeline-headline,
   .client-row-top,
@@ -96,5 +95,15 @@
   .topbar-right {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .insight-head {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-side,
+  .insight-meta-row {
+    justify-items: start;
+    justify-content: flex-start;
   }
 }

@@ -124,6 +124,163 @@
   padding: 6px 12px;
 }
 
+.client-detail-page {
+  display: grid;
+  gap: 10px;
+}
+
+.client-detail-page .detail-hero {
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+}
+
+.client-detail-page .detail-breadcrumbs {
+  margin-bottom: 6px;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.client-detail-page .detail-title {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.client-detail-page .detail-title-row {
+  gap: 10px;
+}
+
+.client-detail-page .hero-text {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.client-detail-page .detail-side-meta {
+  gap: 6px;
+}
+
+.client-detail-page .session-chip {
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.client-detail-page .detail-actions {
+  gap: 5px;
+}
+
+.client-detail-page .detail-hero .ghost-button {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.client-detail-page .stats-grid {
+  gap: 8px;
+}
+
+.client-detail-page .focus-metric {
+  padding: 12px 14px;
+}
+
+.client-detail-page .focus-metric-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.client-detail-page .focus-metric-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.client-detail-page .focus-metric span {
+  font-size: 10px;
+}
+
+.client-detail-page .focus-metric strong {
+  flex-shrink: 0;
+  font-size: 24px;
+  text-align: right;
+}
+
+.client-detail-page .focus-metric p {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.client-detail-page .two-up {
+  gap: 8px;
+}
+
+.client-detail-page .activity-callout {
+  padding: 10px 12px;
+}
+
+.client-detail-page .callout-head strong {
+  font-size: 13px;
+}
+
+.client-detail-page .callout-head {
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.client-detail-page .callout-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.client-detail-page .card {
+  padding: 14px 16px;
+}
+
+.client-detail-page .detail-tab-panel {
+  padding: 12px 14px 14px;
+}
+
+.client-detail-page .section-header {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.client-detail-page .section-header h3 {
+  font-size: 15px;
+}
+
+.client-detail-page .count-chip {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+.client-detail-page .merged-section {
+  margin-top: 0;
+  padding: 4px 14px;
+}
+
+.client-detail-page .merged-section-toggle {
+  padding: 5px 0;
+}
+
+.client-detail-page .merged-section-toggle h4 {
+  font-size: 12px;
+}
+
+.client-detail-page .merged-item {
+  padding: 7px 0;
+  font-size: 12px;
+}
+
+.client-detail-page .merged-item-info span,
+.client-detail-page .unmerge-btn {
+  font-size: 11px;
+}
+
 /* ── Metric card icon ───────────────────────────────── */
 .metric-card-icon {
   display: inline-flex;

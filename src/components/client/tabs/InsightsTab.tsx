@@ -33,13 +33,13 @@ export default function InsightsTab({
               <InsightCard
                 footerAction={(
                   <button
-                    className="delete-btn"
+                    className="ghost-button action-delete-btn insight-delete-btn"
                     disabled={deletingInsightId === insight.id}
                     onClick={() => onDeleteInsight(insight.id, insight.summary ?? "Sin resumen")}
                     title="Eliminar análisis"
                     type="button"
                   >
-                    {deletingInsightId === insight.id ? "Eliminando..." : "🗑 Eliminar"}
+                    {deletingInsightId === insight.id ? "Eliminando..." : "Eliminar"}
                   </button>
                 )}
                 insight={insight}

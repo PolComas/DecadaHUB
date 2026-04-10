@@ -76,9 +76,13 @@ export function FocusMetric({
 }) {
   return (
     <div className="focus-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {helper ? <p>{helper}</p> : null}
+      <div className="focus-metric-main">
+        <div className="focus-metric-copy">
+          <span>{label}</span>
+          {helper ? <p>{helper}</p> : null}
+        </div>
+        <strong>{value}</strong>
+      </div>
     </div>
   );
 }
@@ -128,6 +132,24 @@ export function TimelineRow({ event }: { event: TimelineEvent }) {
   );
 }
 
+function insightEntityLabel(entityType: string) {
+  const labels: Record<string, string> = {
+    email_message: "Correo",
+    meeting: "Reunión",
+    transcript: "Transcripción",
+    action_item: "Acción",
+  };
+
+  return labels[entityType] ?? entityType.replaceAll("_", " ");
+}
+
+function insightSentimentClass(label: AiInsight["sentiment_label"]) {
+  if (label === "positive") return "positive";
+  if (label === "negative") return "negative";
+  if (label === "mixed") return "mixed";
+  return "neutral";
+}
+
 export function InsightCard({
   insight,
   footerAction,
@@ -138,34 +160,54 @@ export function InsightCard({
   const topics = Array.isArray(insight.topics) ? insight.topics : [];
   const risks = Array.isArray(insight.risks) ? insight.risks : [];
   const suggestions = Array.isArray(insight.action_suggestions) ? insight.action_suggestions : [];
+  const hasChips =
+    insight.complaint_flag ||
+    insight.satisfaction_flag ||
+    insight.needs_follow_up ||
+    topics.length > 0 ||
+    risks.length > 0;
 
   return (
     <article className={`insight-card ${insight.sentiment_label ?? "neutral"}`}>
       <div className="insight-head">
-        <div>
-          <CountChip>{sentimentLabel(insight.sentiment_label)}</CountChip>
+        <div className="insight-copy">
           <h4>{insight.summary ?? "Sin resumen generado"}</h4>
-        </div>
-        <div className="insight-scores">
-          <ScoreBar label="Urgencia" value={insight.urgency_score} mode="urgency" />
-          <ScoreBar label="Tono" value={insight.sentiment_score} mode="sentiment" />
-        </div>
-      </div>
 
-      <div className="chip-row">
-        {insight.complaint_flag ? <span className="chip complaint">Queja</span> : null}
-        {insight.satisfaction_flag ? <span className="chip satisfaction">Satisfacción</span> : null}
-        {insight.needs_follow_up ? <span className="chip follow-up">Seguimiento</span> : null}
-        {topics.map((topic) => (
-          <span className="chip topic" key={String(topic)}>
-            {String(topic)}
-          </span>
-        ))}
-        {risks.map((risk) => (
-          <span className="chip risk" key={String(risk)}>
-            {String(risk)}
-          </span>
-        ))}
+          {hasChips ? (
+            <div className="chip-row insight-chip-row">
+              {insight.complaint_flag ? <span className="chip complaint">Queja</span> : null}
+              {insight.satisfaction_flag ? <span className="chip satisfaction">Satisfacción</span> : null}
+              {insight.needs_follow_up ? <span className="chip follow-up">Seguimiento</span> : null}
+              {topics.map((topic) => (
+                <span className="chip topic" key={String(topic)}>
+                  {String(topic)}
+                </span>
+              ))}
+              {risks.map((risk) => (
+                <span className="chip risk" key={String(risk)}>
+                  {String(risk)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="insight-side">
+          <div className="insight-meta-row">
+            <span className="insight-meta">
+              {insightEntityLabel(insight.entity_type)} · {formatDateTime(insight.analyzed_at)}
+            </span>
+            {footerAction}
+          </div>
+
+          <div className="insight-scores">
+            <span className={`insight-sentiment ${insightSentimentClass(insight.sentiment_label)}`}>
+              {sentimentLabel(insight.sentiment_label)}
+            </span>
+            <ScoreBar label="Urgencia" value={insight.urgency_score} mode="urgency" />
+            <ScoreBar label="Tono" value={insight.sentiment_score} mode="sentiment" />
+          </div>
+        </div>
       </div>
 
       {suggestions.length > 0 ? (
@@ -175,12 +217,6 @@ export function InsightCard({
           ))}
         </ul>
       ) : null}
-
-      <div className="list-footer">
-        <span>{insight.entity_type}</span>
-        <span>{formatDateTime(insight.analyzed_at)}</span>
-        {footerAction}
-      </div>
     </article>
   );
 }

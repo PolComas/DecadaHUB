@@ -344,112 +344,114 @@ export default function ClientPage() {
 
   return (
     <>
-      <ClientHero
-        client={client}
-        isDismissing={isDismissing}
-        onDismiss={() => setShowDismissConfirm(true)}
-        onOpenMergeDialog={() => void openMergeDialog()}
-      />
-
-      <ClientKpis client={client} />
-
-      {detail?.mergedClients && detail.mergedClients.length > 0 ? (
-        <MergedClientsSection
-          mergedClients={detail.mergedClients}
-          onUnmerge={(id, name) => setUnmergeTarget({ id, name })}
+      <div className="client-detail-page">
+        <ClientHero
+          client={client}
+          isDismissing={isDismissing}
+          onDismiss={() => setShowDismissConfirm(true)}
+          onOpenMergeDialog={() => void openMergeDialog()}
         />
-      ) : null}
 
-      {detailError ? (
-        <section className="callout error">
-          <strong>No se ha podido cargar la ficha del cliente.</strong>
-          <p>{detailError}</p>
-          <button className="ghost-button" onClick={() => void loadDetail()} style={{ marginTop: 8 }} type="button">Reintentar</button>
+        <ClientKpis client={client} />
+
+        {detail?.mergedClients && detail.mergedClients.length > 0 ? (
+          <MergedClientsSection
+            mergedClients={detail.mergedClients}
+            onUnmerge={(id, name) => setUnmergeTarget({ id, name })}
+          />
+        ) : null}
+
+        {detailError ? (
+          <section className="callout error">
+            <strong>No se ha podido cargar la ficha del cliente.</strong>
+            <p>{detailError}</p>
+            <button className="ghost-button" onClick={() => void loadDetail()} style={{ marginTop: 8 }} type="button">Reintentar</button>
+          </section>
+        ) : null}
+
+        {/* Tab navigation */}
+        <nav className="tab-nav detail-tab-nav" role="tablist" aria-label="Secciones del cliente">
+          {TAB_CONFIG.map((tab) => (
+            <button
+              aria-controls={`tabpanel-${tab.key}`}
+              aria-selected={activeTab === tab.key}
+              className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
+              id={`tab-${tab.key}`}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              type="button"
+            >
+              <tab.icon className="tab-icon" size={13} />
+              {tab.label}
+              <span className="tab-badge">{tabCount(tab.key, detail)}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Tab content */}
+        <section className="card fade-in detail-tab-panel" key={activeTab} role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+          {activeTab === "timeline" && <TimelineTab timeline={detail?.timeline ?? []} isLoading={isLoading} />}
+          {activeTab === "emails" && (
+            <EmailsTab
+              clientName={client?.client_name ?? "cliente"}
+              messages={detail?.messages ?? []}
+              isLoading={isLoading}
+              onOpenEmail={(id) => void handleOpenEmail(id)}
+              onDeleteEmail={(id, subject) => setDeleteTarget({ id, kind: "email", label: subject })}
+            />
+          )}
+          {activeTab === "insights" && (
+            <InsightsTab
+              deletingInsightId={isDeleting && deleteTarget?.kind === "insight" ? deleteTarget.id : null}
+              insights={detail?.insights ?? []}
+              isLoading={isLoading}
+              onDeleteInsight={(id, summary) => setDeleteTarget({ id, kind: "insight", label: summary })}
+            />
+          )}
+          {activeTab === "actions" && (
+            <ActionsTab
+              actions={detail?.actions ?? []}
+              clientName={client?.client_name ?? "cliente"}
+              deletingActionId={isDeleting && deleteTarget?.kind === "action" ? deleteTarget.id : null}
+              isLoading={isLoading}
+              updatingActionIds={updatingActionIds}
+              onDeleteAction={(actionId, title) => setDeleteTarget({ id: actionId, kind: "action", label: title })}
+              onUpdateAction={(actionId, updates) => handleUpdateAction(actionId, updates)}
+            />
+          )}
+          {activeTab === "threads" && (
+            <ThreadsTab
+              deletingThreadId={isDeleting && deleteTarget?.kind === "thread" ? deleteTarget.id : null}
+              threads={(detail?.threads ?? []).filter(
+                (t) => !t.mailbox_id || activeMailboxIds.includes(t.mailbox_id),
+              )}
+              isLoading={isLoading}
+              updatingThreadIds={updatingThreadIds}
+              onDeleteThread={(id, subject) => setDeleteTarget({ id, kind: "thread", label: subject })}
+              onOpenThread={(id, subject) => void handleOpenThread(id, subject)}
+              onUpdateThreadStatus={(threadId, status) => handleUpdateThreadStatus(threadId, status)}
+            />
+          )}
+          {activeTab === "meetings" && (
+            <MeetingsTab
+              deletingMeetingId={isDeleting && deleteTarget?.kind === "meeting" ? deleteTarget.id : null}
+              meetings={detail?.meetings ?? []}
+              isLoading={isLoading}
+              onDeleteMeeting={(meetingId, title) => setDeleteTarget({ id: meetingId, kind: "meeting", label: title })}
+            />
+          )}
+          {activeTab === "transcripts" && (
+            <TranscriptsTab
+              deletingTranscriptId={isDeleting && deleteTarget?.kind === "transcript" ? deleteTarget.id : null}
+              transcripts={detail?.transcripts ?? []}
+              isLoading={isLoading}
+              onDeleteTranscript={(transcriptId, title) => setDeleteTarget({ id: transcriptId, kind: "transcript", label: title })}
+              onMoveTranscript={(transcript) => void openMoveTranscriptDialog(transcript)}
+            />
+          )}
         </section>
-      ) : null}
-
-      {/* Tab navigation */}
-      <nav className="tab-nav" role="tablist" aria-label="Secciones del cliente">
-        {TAB_CONFIG.map((tab) => (
-          <button
-            aria-controls={`tabpanel-${tab.key}`}
-            aria-selected={activeTab === tab.key}
-            className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
-            id={`tab-${tab.key}`}
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            role="tab"
-            type="button"
-          >
-            <tab.icon className="tab-icon" size={13} />
-            {tab.label}
-            <span className="tab-badge">{tabCount(tab.key, detail)}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* Tab content */}
-      <section className="card fade-in" key={activeTab} role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-        {activeTab === "timeline" && <TimelineTab timeline={detail?.timeline ?? []} isLoading={isLoading} />}
-        {activeTab === "emails" && (
-          <EmailsTab
-            clientName={client?.client_name ?? "cliente"}
-            messages={detail?.messages ?? []}
-            isLoading={isLoading}
-            onOpenEmail={(id) => void handleOpenEmail(id)}
-            onDeleteEmail={(id, subject) => setDeleteTarget({ id, kind: "email", label: subject })}
-          />
-        )}
-        {activeTab === "insights" && (
-          <InsightsTab
-            deletingInsightId={isDeleting && deleteTarget?.kind === "insight" ? deleteTarget.id : null}
-            insights={detail?.insights ?? []}
-            isLoading={isLoading}
-            onDeleteInsight={(id, summary) => setDeleteTarget({ id, kind: "insight", label: summary })}
-          />
-        )}
-        {activeTab === "actions" && (
-          <ActionsTab
-            actions={detail?.actions ?? []}
-            clientName={client?.client_name ?? "cliente"}
-            deletingActionId={isDeleting && deleteTarget?.kind === "action" ? deleteTarget.id : null}
-            isLoading={isLoading}
-            updatingActionIds={updatingActionIds}
-            onDeleteAction={(actionId, title) => setDeleteTarget({ id: actionId, kind: "action", label: title })}
-            onUpdateAction={(actionId, updates) => handleUpdateAction(actionId, updates)}
-          />
-        )}
-        {activeTab === "threads" && (
-          <ThreadsTab
-            deletingThreadId={isDeleting && deleteTarget?.kind === "thread" ? deleteTarget.id : null}
-            threads={(detail?.threads ?? []).filter(
-              (t) => !t.mailbox_id || activeMailboxIds.includes(t.mailbox_id),
-            )}
-            isLoading={isLoading}
-            updatingThreadIds={updatingThreadIds}
-            onDeleteThread={(id, subject) => setDeleteTarget({ id, kind: "thread", label: subject })}
-            onOpenThread={(id, subject) => void handleOpenThread(id, subject)}
-            onUpdateThreadStatus={(threadId, status) => handleUpdateThreadStatus(threadId, status)}
-          />
-        )}
-        {activeTab === "meetings" && (
-          <MeetingsTab
-            deletingMeetingId={isDeleting && deleteTarget?.kind === "meeting" ? deleteTarget.id : null}
-            meetings={detail?.meetings ?? []}
-            isLoading={isLoading}
-            onDeleteMeeting={(meetingId, title) => setDeleteTarget({ id: meetingId, kind: "meeting", label: title })}
-          />
-        )}
-        {activeTab === "transcripts" && (
-          <TranscriptsTab
-            deletingTranscriptId={isDeleting && deleteTarget?.kind === "transcript" ? deleteTarget.id : null}
-            transcripts={detail?.transcripts ?? []}
-            isLoading={isLoading}
-            onDeleteTranscript={(transcriptId, title) => setDeleteTarget({ id: transcriptId, kind: "transcript", label: title })}
-            onMoveTranscript={(transcript) => void openMoveTranscriptDialog(transcript)}
-          />
-        )}
-      </section>
+      </div>
 
       {/* Modals */}
       {showMergeDialog && (
