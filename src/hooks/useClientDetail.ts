@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchClientDetail } from "../lib/api";
 import { toMessage } from "../lib/errors";
+import { useRealtimeSync } from "./useRealtimeSync";
 import type { ClientDetail } from "../types";
 
 export function useClientDetail(clientId: string | undefined) {
@@ -32,6 +33,22 @@ export function useClientDetail(clientId: string | undefined) {
       cancelled = true;
     };
   }, [loadDetail]);
+
+  // Auto-refresh when another user changes data for this client
+  const watches = useMemo(() => {
+    if (!clientId) return [];
+    const filter = `client_id=eq.${clientId}`;
+    return [
+      { table: "email_threads",  filter },
+      { table: "email_messages", filter },
+      { table: "action_items",   filter },
+      { table: "transcripts",    filter },
+      { table: "ai_insights",    filter },
+      { table: "meetings",       filter },
+    ];
+  }, [clientId]);
+
+  useRealtimeSync(watches, loadDetail);
 
   return { detail, setDetail, isLoading, detailError, setDetailError, loadDetail };
 }

@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useRealtimeSync } from "../hooks/useRealtimeSync";
 import { Link, Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import ThemeToggle from "./ThemeToggle";
@@ -107,6 +108,17 @@ export default function AppLayout() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
+
+  // Refresh dashboard automatically when another user changes shared data
+  useRealtimeSync(
+    [
+      { table: "clients" },
+      { table: "action_items" },
+      { table: "email_threads" },
+      { table: "transcripts" },
+    ],
+    () => loadDashboard(false),
+  );
 
   async function handleSignOut() {
     try {
