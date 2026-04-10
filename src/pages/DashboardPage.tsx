@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AlertTriangle, Calendar, ChevronRight, Clock, Mail, Users, Zap } from "lucide-react";
 import { currentDateStamp, downloadCsv } from "../lib/csv";
 import { formatCompactNumber, formatHours } from "../lib/formatters";
 import { useAppLayoutContext } from "../components/AppLayout";
@@ -79,31 +80,43 @@ export default function DashboardPage() {
 
       <section className="stats-grid">
         <MetricCard
+          icon={Users}
+          iconColor="#6366f1"
           label="Clientes activos"
           note="Cartera visible"
           value={summary ? String(summary.totalClients) : "—"}
         />
         <MetricCard
+          icon={Mail}
+          iconColor="#3b82f6"
           label="Correos 30d"
           note="Entrantes + salientes"
           value={summary ? formatCompactNumber(summary.totalEmails30d) : "—"}
         />
         <MetricCard
+          icon={Clock}
+          iconColor="#f59e0b"
           label="Respuesta equipo"
           note="Media h. laborables"
           value={summary ? formatHours(summary.averageTeamResponseHours) : "—"}
         />
         <MetricCard
+          icon={AlertTriangle}
+          iconColor="#ef4444"
           label="Clientes críticos"
           note="Puntuación de riesgo >= 6"
           value={summary ? String(summary.highRiskClients) : "—"}
         />
         <MetricCard
+          icon={Calendar}
+          iconColor="#8b5cf6"
           label="Reuniones 30d"
           note="Calendario consolidado"
           value={summary ? String(summary.totalMeetings30d) : "—"}
         />
         <MetricCard
+          icon={Zap}
+          iconColor="#10b981"
           label="Acciones abiertas"
           note="Seguimiento pendiente"
           value={summary ? String(summary.openActions) : "—"}
@@ -143,7 +156,10 @@ export default function DashboardPage() {
                 <Link className="priority-card" key={client.id} to={`/clients/${client.id}`}>
                   <div className="priority-card-head">
                     <strong>{client.client_name}</strong>
-                    <RiskPill score={client.risk_score_heuristic} />
+                    <div className="priority-card-head-right">
+                      <RiskPill score={client.risk_score_heuristic} />
+                      <ChevronRight className="priority-card-arrow" size={14} />
+                    </div>
                   </div>
                   <p>{client.notes ?? "Sin contexto adicional."}</p>
                   <div className="priority-metrics">

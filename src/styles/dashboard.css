@@ -116,6 +116,17 @@
   padding: 6px 12px;
 }
 
+/* ── Metric card icon ───────────────────────────────── */
+.metric-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
 /* ── Stats grid ─────────────────────────────────────── */
 .stats-grid {
   display: grid;

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import {
   directionLabel,
   formatDate,
@@ -23,13 +25,25 @@ export function MetricCard({
   label,
   value,
   note,
+  icon: Icon,
+  iconColor,
 }: {
   label: string;
   value: string;
   note: string;
+  icon?: LucideIcon;
+  iconColor?: string;
 }) {
   return (
     <article className="metric-card">
+      {Icon ? (
+        <div
+          className="metric-card-icon"
+          style={{ background: `${iconColor}1a`, color: iconColor }}
+        >
+          <Icon size={16} />
+        </div>
+      ) : null}
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{note}</p>
@@ -239,9 +253,13 @@ export function ActivityCallout({
   body: string;
   tone?: "default" | "warning";
 }) {
+  const Icon = tone === "warning" ? AlertTriangle : Info;
   return (
     <div className={`activity-callout ${tone === "warning" ? "warning" : ""}`}>
-      <strong>{title}</strong>
+      <div className="callout-head">
+        <Icon className="callout-icon" size={13} />
+        <strong>{title}</strong>
+      </div>
       <p>{body}</p>
     </div>
   );

@@ -81,6 +81,23 @@
   background: var(--risk-medium-bg);
 }
 
+.callout-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+
+.callout-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.activity-callout.warning .callout-icon {
+  color: var(--risk-medium-text);
+  opacity: 0.8;
+}
+
 /* ── Priority / stack ───────────────────────────────── */
 .priority-grid,
 .stack-list,
@@ -106,6 +123,24 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
+}
+
+.priority-card-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.priority-card-arrow {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 150ms, transform 150ms;
+}
+
+.priority-card:hover .priority-card-arrow {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .list-title-line {

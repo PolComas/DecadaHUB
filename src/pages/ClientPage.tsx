@@ -1,4 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { BarChart2, Calendar, CheckSquare, Clock, FileText, Mail, MessageSquare } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   assignTranscriptToClient,
   deleteActionItem,
@@ -42,14 +44,14 @@ import TranscriptsTab from "../components/client/tabs/TranscriptsTab";
 type DetailTab = "timeline" | "emails" | "insights" | "actions" | "threads" | "meetings" | "transcripts";
 type DeleteTargetKind = "email" | "insight" | "action" | "thread" | "meeting" | "transcript";
 
-const TAB_CONFIG: { key: DetailTab; label: string }[] = [
-  { key: "timeline", label: "Cronología" },
-  { key: "emails", label: "Correos" },
-  { key: "insights", label: "Análisis" },
-  { key: "actions", label: "Acciones" },
-  { key: "threads", label: "Hilos" },
-  { key: "meetings", label: "Reuniones" },
-  { key: "transcripts", label: "Transcripciones" },
+const TAB_CONFIG: { key: DetailTab; label: string; icon: LucideIcon }[] = [
+  { key: "timeline",    label: "Cronología",       icon: Clock },
+  { key: "emails",      label: "Correos",           icon: Mail },
+  { key: "insights",    label: "Análisis",          icon: BarChart2 },
+  { key: "actions",     label: "Acciones",          icon: CheckSquare },
+  { key: "threads",     label: "Hilos",             icon: MessageSquare },
+  { key: "meetings",    label: "Reuniones",         icon: Calendar },
+  { key: "transcripts", label: "Transcripciones",   icon: FileText },
 ];
 
 function tabCount(tab: DetailTab, detail: { timeline: unknown[]; messages: unknown[]; insights: unknown[]; actions: unknown[]; threads: unknown[]; meetings: unknown[]; transcripts: unknown[] } | null): number {
@@ -370,15 +372,16 @@ export default function ClientPage() {
       <nav className="tab-nav" role="tablist" aria-label="Secciones del cliente">
         {TAB_CONFIG.map((tab) => (
           <button
+            aria-controls={`tabpanel-${tab.key}`}
+            aria-selected={activeTab === tab.key}
             className={`tab-button ${activeTab === tab.key ? "active" : ""}`}
+            id={`tab-${tab.key}`}
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            type="button"
             role="tab"
-            aria-selected={activeTab === tab.key}
-            aria-controls={`tabpanel-${tab.key}`}
-            id={`tab-${tab.key}`}
+            type="button"
           >
+            <tab.icon className="tab-icon" size={13} />
             {tab.label}
             <span className="tab-badge">{tabCount(tab.key, detail)}</span>
           </button>
