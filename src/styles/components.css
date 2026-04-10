@@ -5,8 +5,8 @@
   justify-content: center;
   gap: 4px;
   border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  font-size: 11px;
+  padding: 2px 8px;
+  font-size: 10px;
   font-weight: 600;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -15,8 +15,8 @@
 
 .risk-pill::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -73,7 +73,7 @@
 
 /* ── Activity callouts ──────────────────────────────── */
 .activity-callout {
-  padding: 14px 18px;
+  padding: 12px 14px;
 }
 
 .activity-callout.warning {
@@ -84,8 +84,8 @@
 .callout-head {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 
 .callout-icon {
@@ -103,13 +103,13 @@
 .stack-list,
 .timeline {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .priority-card {
   display: grid;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 12px 14px;
   border-radius: var(--radius);
   border: 1px solid var(--separator);
   background: var(--card);
@@ -128,8 +128,13 @@
 .priority-card-head-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
+}
+
+.priority-card-head strong {
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .priority-card-arrow {
@@ -149,8 +154,8 @@
 
 .priority-card p {
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .priority-metrics,
@@ -159,15 +164,15 @@
 .timeline-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
+  gap: 4px 10px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 /* ── Portfolio table ────────────────────────────────── */
 .portfolio-table {
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .portfolio-header,
@@ -184,12 +189,12 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0 16px 10px;
+  padding: 0 14px 8px;
   border-bottom: 1px solid var(--separator);
 }
 
 .portfolio-row {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: var(--radius);
   border: 1px solid var(--separator-light);
   background: var(--card);
@@ -197,19 +202,19 @@
 }
 
 .portfolio-cell {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .portfolio-primary {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .portfolio-primary strong {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -217,7 +222,7 @@
 
 .portfolio-primary p {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 /* ── Timeline ───────────────────────────────────────── */

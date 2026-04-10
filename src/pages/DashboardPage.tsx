@@ -135,9 +135,9 @@ export default function DashboardPage() {
         <DashboardFilters clients={allClients} filters={filters} onChange={setFilters} />
       ) : null}
 
-      <section className="two-up two-up-wide">
-        <section className="card">
-          <div className="section-header">
+      <section className="two-up two-up-wide dashboard-panels">
+        <section className="card dashboard-panel">
+          <div className="section-header compact">
             <div>
               <p className="eyebrow">Prioridades</p>
               <h3>Clientes a vigilar hoy</h3>
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                       <ChevronRight className="priority-card-arrow" size={14} />
                     </div>
                   </div>
-                  <p>{client.notes ?? "Sin contexto adicional."}</p>
+                  {client.notes ? <p>{client.notes}</p> : null}
                   <div className="priority-metrics">
                     <span>{client.stalled_threads_gt_72h} hilos estancados</span>
                     <span>{client.overdue_actions} acciones vencidas</span>
@@ -178,8 +178,8 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="card">
-          <div className="section-header">
+        <section className="card dashboard-panel">
+          <div className="section-header compact">
             <div>
               <p className="eyebrow">Distribución de riesgo</p>
               <h3>Estado de la cartera</h3>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
 
           {!isBooting && slowestTeamReplies.length ? (
             <>
-              <div className="section-header compact" style={{ marginTop: 14 }}>
+              <div className="section-header compact" style={{ marginTop: 12 }}>
                 <h3>Respuestas más lentas</h3>
               </div>
               <div className="stack-list">
@@ -212,8 +212,8 @@ export default function DashboardPage() {
         </section>
       </section>
 
-      <section className="card">
-        <div className="section-header">
+      <section className="card dashboard-panel dashboard-portfolio-panel">
+        <div className="section-header compact">
           <div>
             <p className="eyebrow">Cartera</p>
             <h3>Todos los clientes ({displayClients.length})</h3>

@@ -36,17 +36,23 @@ export function MetricCard({
 }) {
   return (
     <article className="metric-card">
-      {Icon ? (
-        <div
-          className="metric-card-icon"
-          style={{ background: `${iconColor}1a`, color: iconColor }}
-        >
-          <Icon size={16} />
+      <div className="metric-card-main">
+        <div className="metric-card-copy">
+          <div className="metric-card-label-row">
+            {Icon ? (
+              <div
+                className="metric-card-icon"
+                style={{ background: `${iconColor}1a`, color: iconColor }}
+              >
+                <Icon size={14} />
+              </div>
+            ) : null}
+            <span className="metric-card-label">{label}</span>
+          </div>
+          <p className="metric-card-note">{note}</p>
         </div>
-      ) : null}
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <p>{note}</p>
+        <strong className="metric-card-value">{value}</strong>
+      </div>
     </article>
   );
 }

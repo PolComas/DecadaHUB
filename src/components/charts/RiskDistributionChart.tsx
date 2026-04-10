@@ -8,8 +8,8 @@ const SEGMENTS = [
   { key: "healthy", label: "OK", color: "var(--risk-ok)" },
 ] as const;
 
-const SIZE = 120;
-const STROKE = 16;
+const SIZE = 108;
+const STROKE = 14;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
