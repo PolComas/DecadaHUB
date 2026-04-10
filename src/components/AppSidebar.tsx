@@ -3,6 +3,7 @@ import type { ClientOverview, DashboardOverview } from "../types";
 import { initials, RiskPill, avatarTone } from "./ui";
 
 interface AppSidebarProps {
+  activeMailboxIds: string[];
   clients: ClientOverview[];
   dashboard: DashboardOverview | null;
   isBooting: boolean;
@@ -11,9 +12,11 @@ interface AppSidebarProps {
   selectedClientId: string | null;
   onClose: () => void;
   onSearchChange: (value: string) => void;
+  onToggleMailbox: (id: string) => void;
 }
 
 export default function AppSidebar({
+  activeMailboxIds,
   clients,
   dashboard,
   isBooting,
@@ -22,6 +25,7 @@ export default function AppSidebar({
   selectedClientId,
   onClose,
   onSearchChange,
+  onToggleMailbox,
 }: AppSidebarProps) {
   return (
     <>
@@ -47,27 +51,34 @@ export default function AppSidebar({
         {dashboard && dashboard.mailboxes.length > 0 && (
           <div className="sidebar-section">
             <div className="sidebar-section-head">
-              <span>Cuentas</span>
+              <span>Mailboxes</span>
               <span>{dashboard.mailboxes.length}</span>
             </div>
 
             <div className="sidebar-stack">
-              {dashboard.mailboxes.map((mailbox) => (
-                <div className="sidebar-item" key={mailbox.id}>
-                  <div className="sidebar-item-main">
-                    <div className={`item-avatar ${avatarTone(mailbox.email)}`}>
-                      {initials(mailbox.label)}
+              {dashboard.mailboxes.map((mailbox) => {
+                const isActive = activeMailboxIds.includes(mailbox.id);
+                return (
+                  <button
+                    className={`sidebar-item ${isActive ? "" : "mailbox-inactive"}`}
+                    key={mailbox.id}
+                    onClick={() => onToggleMailbox(mailbox.id)}
+                    title={isActive ? `Ocultar ${mailbox.label}` : `Mostrar ${mailbox.label}`}
+                    type="button"
+                  >
+                    <div className="sidebar-item-main">
+                      <div className={`item-avatar ${isActive ? avatarTone(mailbox.email) : "muted"}`}>
+                        {initials(mailbox.label)}
+                      </div>
+                      <div className="sidebar-item-copy">
+                        <strong>{mailbox.label}</strong>
+                        <p>{mailbox.email}</p>
+                      </div>
                     </div>
-                    <div className="sidebar-item-copy">
-                      <strong>{mailbox.label}</strong>
-                      <p>{mailbox.email}</p>
-                    </div>
-                  </div>
-                  <span className="assigned-badge">
-                    {mailbox.owner_name ?? "—"}
-                  </span>
-                </div>
-              ))}
+                    <span className={`mailbox-status-dot ${isActive ? "on" : "off"}`} />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

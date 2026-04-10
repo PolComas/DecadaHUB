@@ -67,7 +67,7 @@ function buildSummary(clients: ClientOverview[]): DashboardSummary {
 export async function fetchDashboardOverview(): Promise<DashboardOverview> {
   const supabase = getSupabaseClient();
 
-  const [kpiResult, clientsResult, teamMembersResult, mailboxesResult] = await Promise.all([
+  const [kpiResult, clientsResult, teamMembersResult, mailboxesResult, threadMailboxResult] = await Promise.all([
     supabase
       .from("v_client_kpis_30d")
       .select("*")
@@ -90,17 +90,34 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
       .eq("is_active", true)
       .order("label", { ascending: true })
       .returns<Mailbox[]>(),
+    supabase
+      .from("email_threads")
+      .select("client_id, mailbox_id")
+      .not("client_id", "is", null)
+      .not("mailbox_id", "is", null)
+      .returns<{ client_id: string; mailbox_id: string }[]>(),
   ]);
 
   if (kpiResult.error) throw kpiResult.error;
   if (clientsResult.error) throw clientsResult.error;
   if (teamMembersResult.error) throw teamMembersResult.error;
   if (mailboxesResult.error) throw mailboxesResult.error;
+  // threadMailboxResult errors are non-fatal — degrade gracefully
 
   const clients = normalizeArray(clientsResult.data);
   const clientKpis = normalizeArray(kpiResult.data);
   const teamMembers = normalizeArray(teamMembersResult.data);
   const mailboxes = normalizeArray(mailboxesResult.data);
+
+  // Build client → mailbox_ids mapping
+  const clientMailboxIds: Record<string, string[]> = {};
+  for (const row of normalizeArray(threadMailboxResult.data)) {
+    (clientMailboxIds[row.client_id] ??= []).push(row.mailbox_id);
+  }
+  // Deduplicate
+  for (const key of Object.keys(clientMailboxIds)) {
+    clientMailboxIds[key] = [...new Set(clientMailboxIds[key])];
+  }
 
   const ownerById = new Map(teamMembers.map((member) => [member.id, member.full_name]));
   const clientMap = new Map(clients.map((client) => [client.id, client]));
@@ -135,6 +152,7 @@ export async function fetchDashboardOverview(): Promise<DashboardOverview> {
         ? ownerById.get(mailbox.team_member_id) ?? null
         : null,
     })),
+    clientMailboxIds,
     teamMembers,
     summary: buildSummary(mergedClients),
   };
@@ -440,7 +458,7 @@ export async function fetchClientDetail(clientId: string): Promise<ClientDetail>
         .returns<Meeting[]>(),
       supabase
         .from("email_threads")
-        .select("id, client_id, subject, status, last_message_at, last_direction, message_count")
+        .select("id, client_id, mailbox_id, subject, status, last_message_at, last_direction, message_count")
         .eq("client_id", clientId)
         .order("last_message_at", { ascending: false })
         .limit(20)

@@ -113,6 +113,7 @@ export interface MeetingAttendee {
 export interface EmailThread {
   id: string;
   client_id: string | null;
+  mailbox_id: string | null;
   subject: string | null;
   status: ThreadStatus;
   last_message_at: string | null;
@@ -179,6 +180,7 @@ export interface DashboardSummary {
 export interface DashboardOverview {
   clients: ClientOverview[];
   mailboxes: Array<Mailbox & { owner_name: string | null }>;
+  clientMailboxIds: Record<string, string[]>;
   teamMembers: TeamMember[];
   summary: DashboardSummary;
 }

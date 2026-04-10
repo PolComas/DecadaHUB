@@ -13,14 +13,28 @@ import {
   RiskPill,
   SkeletonBlock,
 } from "../components/ui";
-import type { ClientOverview } from "../types";
+import type { ClientOverview, DashboardSummary } from "../types";
 
 export default function DashboardPage() {
-  const { dashboard, isBooting, globalError, refreshDashboard } = useAppLayoutContext();
+  const { filteredClients, isBooting, globalError, refreshDashboard } = useAppLayoutContext();
   const [filters, setFilters] = useState<DashboardFilterState>(EMPTY_FILTERS);
 
-  const summary = dashboard?.summary;
-  const allClients = dashboard?.clients ?? [];
+  const summary = useMemo((): DashboardSummary | null => {
+    if (filteredClients.length === 0) return null;
+    const responseHours = filteredClients.map((c) => c.avg_team_response_hours_30d).filter((v) => v > 0);
+    return {
+      totalClients: filteredClients.length,
+      totalEmails30d: filteredClients.reduce((s, c) => s + c.emails_sent_30d + c.emails_received_30d, 0),
+      totalMeetings30d: filteredClients.reduce((s, c) => s + c.meetings_30d, 0),
+      averageTeamResponseHours: responseHours.length
+        ? responseHours.reduce((a, v) => a + v, 0) / responseHours.length
+        : 0,
+      highRiskClients: filteredClients.filter((c) => c.risk_score_heuristic >= 6).length,
+      openActions: filteredClients.reduce((s, c) => s + c.open_actions, 0),
+    };
+  }, [filteredClients]);
+
+  const allClients = filteredClients;
 
   const displayClients = useMemo(
     () => filterClients(allClients, filters),
@@ -56,7 +70,7 @@ export default function DashboardPage() {
     <>
       <section className="dashboard-header">
         <div className="dashboard-header-copy">
-          <h2>Pulso de cartera</h2>
+          <h2>Panel general</h2>
           <p>
             Relación, respuesta y riesgo para priorizar mejor el día.
           </p>

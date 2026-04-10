@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import ThemeToggle from "./ThemeToggle";
@@ -16,6 +16,7 @@ interface AppLayoutContextValue {
   isRefreshing: boolean;
   globalError: string | null;
   lastUpdated: Date | null;
+  activeMailboxIds: string[];
   refreshDashboard: () => Promise<void>;
 }
 
@@ -31,33 +32,47 @@ export default function AppLayout() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // All mailbox IDs active by default. Initialized once when mailboxes first load.
+  const [activeMailboxIds, setActiveMailboxIds] = useState<string[]>([]);
+  const mailboxFilterReady = useRef(false);
+
   const deferredSearch = useDeferredValue(search);
   const selectedClientId = location.pathname.startsWith("/clients/")
     ? location.pathname.split("/")[2] ?? null
     : null;
 
+  // Initialize mailbox selection once on first dashboard load
+  useEffect(() => {
+    if (dashboard?.mailboxes.length && !mailboxFilterReady.current) {
+      setActiveMailboxIds(dashboard.mailboxes.map((m) => m.id));
+      mailboxFilterReady.current = true;
+    }
+  }, [dashboard?.mailboxes]);
+
   const filteredClients = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
     const clients = dashboard?.clients ?? [];
+    const allMailboxIds = dashboard?.mailboxes.map((m) => m.id) ?? [];
+    const isFilteringByMailbox =
+      mailboxFilterReady.current && activeMailboxIds.length < allMailboxIds.length;
 
     return clients.filter((client) => {
-      if (!normalizedSearch) {
-        return true;
+      // Mailbox filter — only active when the user has deselected at least one mailbox
+      if (isFilteringByMailbox) {
+        if (activeMailboxIds.length === 0) return false;
+        const clientMailboxes = dashboard?.clientMailboxIds[client.id] ?? [];
+        if (!clientMailboxes.some((mid) => activeMailboxIds.includes(mid))) return false;
       }
 
-      const haystack = [
-        client.client_name,
-        client.owner_name,
-        client.slug,
-        client.notes,
-      ]
+      // Search filter
+      if (!normalizedSearch) return true;
+      const haystack = [client.client_name, client.owner_name, client.slug, client.notes]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-
       return haystack.includes(normalizedSearch);
     });
-  }, [dashboard?.clients, deferredSearch]);
+  }, [dashboard, activeMailboxIds, deferredSearch]);
 
   useEffect(() => {
     void loadDashboard(true);
@@ -87,6 +102,12 @@ export default function AppLayout() {
     }
   }
 
+  function toggleMailbox(id: string) {
+    setActiveMailboxIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
   async function handleSignOut() {
     try {
       await signOut();
@@ -102,12 +123,14 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <AppSidebar
+        activeMailboxIds={activeMailboxIds}
         clients={filteredClients}
         dashboard={dashboard}
         isBooting={isBooting}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onSearchChange={setSearch}
+        onToggleMailbox={toggleMailbox}
         search={search}
         selectedClientId={selectedClientId}
       />
@@ -168,6 +191,7 @@ export default function AppLayout() {
                 isRefreshing,
                 globalError,
                 lastUpdated,
+                activeMailboxIds,
                 refreshDashboard: async () => loadDashboard(false),
               } satisfies AppLayoutContextValue
             }

@@ -69,7 +69,7 @@ function tabCount(tab: DetailTab, detail: { timeline: unknown[]; messages: unkno
 export default function ClientPage() {
   const { clientId } = useParams();
   const navigate = useNavigate();
-  const { dashboard, refreshDashboard } = useAppLayoutContext();
+  const { dashboard, refreshDashboard, activeMailboxIds } = useAppLayoutContext();
   const client = dashboard?.clients.find((item) => item.id === clientId) ?? null;
   const { detail, setDetail, isLoading, detailError, setDetailError, loadDetail } = useClientDetail(clientId);
   const [activeTab, setActiveTab] = useState<DetailTab>("timeline");
@@ -419,7 +419,9 @@ export default function ClientPage() {
         {activeTab === "threads" && (
           <ThreadsTab
             deletingThreadId={isDeleting && deleteTarget?.kind === "thread" ? deleteTarget.id : null}
-            threads={detail?.threads ?? []}
+            threads={(detail?.threads ?? []).filter(
+              (t) => !t.mailbox_id || activeMailboxIds.includes(t.mailbox_id),
+            )}
             isLoading={isLoading}
             updatingThreadIds={updatingThreadIds}
             onDeleteThread={(id, subject) => setDeleteTarget({ id, kind: "thread", label: subject })}
