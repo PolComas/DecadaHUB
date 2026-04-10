@@ -344,16 +344,19 @@ export async function deleteThread(threadId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function fetchMergeCandidates(excludeId: string): Promise<MergeCandidate[]> {
+export async function fetchMergeCandidates(excludeId?: string): Promise<MergeCandidate[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("clients")
     .select("id, name, primary_domain")
     .neq("status", "inactive")
-    .neq("id", excludeId)
-    .order("name", { ascending: true })
-    .returns<MergeCandidate[]>();
+    .order("name", { ascending: true });
 
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { data, error } = await query.returns<MergeCandidate[]>();
   if (error) throw error;
   return data ?? [];
 }

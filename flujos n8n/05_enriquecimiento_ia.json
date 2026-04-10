@@ -22,28 +22,6 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  em.id           AS entity_id,\n  'email_message' AS entity_type,\n  em.client_id,\n  em.subject,\n  em.body_text,\n  em.direction,\n  em.sent_at\nFROM email_messages em\nWHERE em.client_id IS NOT NULL\n  AND em.direction = 'client_to_team'\n  AND NOT EXISTS (\n    SELECT 1\n    FROM ai_insights ai\n    WHERE ai.entity_id = em.id\n      AND ai.entity_type = 'email_message'\n  )\nORDER BY em.sent_at DESC\nLIMIT 20;",
-        "options": {}
-      },
-      "id": "5533780e-aec9-42b8-bcea-2416ef5f92a3",
-      "name": "Fetch pending emails",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        -240,
-        -16
-      ],
-      "alwaysOutputData": false,
-      "credentials": {
-        "postgres": {
-          "id": "3Kp5Kb17YoxCT3Ll",
-          "name": "Postgres Decada"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
         "query": "SELECT\n  t.id             AS entity_id,\n  'transcript'      AS entity_type,\n  t.client_id,\n  t.file_name       AS subject,\n  t.content_text    AS body_text,\n  'internal'        AS direction,\n  t.transcript_at   AS sent_at\nFROM transcripts t\nWHERE t.client_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1 FROM ai_insights ai\n    WHERE ai.entity_id = t.id\n      AND ai.entity_type = 'transcript'\n  )\nORDER BY t.transcript_at DESC\nLIMIT 10;",
         "options": {}
       },
@@ -53,7 +31,7 @@
       "typeVersion": 2.5,
       "position": [
         -240,
-        144
+        48
       ],
       "alwaysOutputData": false,
       "credentials": {
@@ -75,7 +53,7 @@
       "typeVersion": 2.5,
       "position": [
         -240,
-        304
+        224
       ],
       "alwaysOutputData": false,
       "credentials": {
@@ -86,9 +64,7 @@
       }
     },
     {
-      "parameters": {
-        "numberInputs": 3
-      },
+      "parameters": {},
       "id": "34f19c72-1633-4642-91c3-264b9b6c718a",
       "name": "Merge all items",
       "type": "n8n-nodes-base.merge",
@@ -336,11 +312,6 @@
       "main": [
         [
           {
-            "node": "Fetch pending emails",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Fetch pending transcripts",
             "type": "main",
             "index": 0
@@ -353,7 +324,7 @@
         ]
       ]
     },
-    "Fetch pending emails": {
+    "Fetch pending transcripts": {
       "main": [
         [
           {
@@ -364,24 +335,13 @@
         ]
       ]
     },
-    "Fetch pending transcripts": {
-      "main": [
-        [
-          {
-            "node": "Merge all items",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
     "Fetch pending threads": {
       "main": [
         [
           {
             "node": "Merge all items",
             "type": "main",
-            "index": 2
+            "index": 1
           }
         ]
       ]

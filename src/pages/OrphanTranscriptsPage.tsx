@@ -50,7 +50,7 @@ export default function OrphanTranscriptsPage() {
     setAssignSearch("");
     setCandidatesLoading(true);
     try {
-      const data = await fetchMergeCandidates("__none__");
+      const data = await fetchMergeCandidates();
       setCandidates(data);
     } catch {
       setCandidates([]);
